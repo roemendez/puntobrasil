@@ -1795,77 +1795,120 @@ $('fileImportExcel').addEventListener('change',(e)=>{
   };r.readAsArrayBuffer(f);
 });
 function importCatSheet(rows,cat){
-  // ─── Leer parámetros del encabezado de la planilla (filas 1-4, índice 0-3) ───
-  // Igual que en la planilla original: valores como fracción (0.25 → 25%)
-  const setParam=(id,val)=>{ if(val&&val>0){ $(id).value=Math.round(val*100*10)/10; } };
+  // Importador robusto: acepta el Excel exportado por este sistema y también planillas simples
+  // con encabezados como Nombre/Proveedor/Tipo/Stock o Producto/Descripción/Qtde/Peso/V. Unit.
+  const clean=(v)=>String(v===undefined||v===null?'':v).trim();
+  const norm=(v)=>clean(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+  const toNumber=(v)=>{
+    if(typeof v==='number')return isFinite(v)?v:0;
+    let t=clean(v);
+    if(!t)return 0;
+    // Soporta $ 1.234,56 / 1,234.56 / 1234
+    t=t.replace(/[$RCLP\s]/gi,'');
+    if(t.includes(',')&&t.includes('.')) t=t.replace(/\./g,'').replace(',','.');
+    else if(t.includes(',')) t=t.replace(',','.');
+    const n=parseFloat(t.replace(/[^0-9.-]/g,''));
+    return isNaN(n)?0:n;
+  };
+  const guessTipo=(txt)=>{
+    const t=norm(txt);
+    if(t.includes('anillo'))return 'Anillo';
+    if(t.includes('collar')||t.includes('gargantilla'))return 'Collar';
+    if(t.includes('pulsera')||t.includes('esclava'))return 'Pulsera';
+    if(t.includes('aro')||t.includes('arete')||t.includes('brinco'))return 'Aros';
+    if(t.includes('cadena')||t.includes('corrente'))return 'Cadena';
+    if(t.includes('dije')||t.includes('pingente'))return 'Dije';
+    return 'Otro';
+  };
+  const col=(map,names)=>{for(const name of names){const k=norm(name);if(map[k]!==undefined)return map[k];}return -1;};
+
+  // Leer parámetros si el archivo corresponde al formato exportado por este sistema.
+  const setParam=(id,val)=>{ val=toNumber(val); if(val&&val>0){ $(id).value=Math.round(val*100*10)/10; } };
   if(cat==='brasil'){
     const r2=rows[1]||[], r3=rows[2]||[], r4=rows[3]||[];
-    if(r3[1]) $('b_tc').value = r3[1];          // B3 = tipo de cambio
-    setParam('b_viaje', r2[23]);                  // X2 = gastos viaje
-    setParam('b_red',   r2[24]);                  // Y2 = redcompra
-    setParam('b_shopify',r2[25]);                 // Z2 = comision shopify
-    setParam('b_aduana', r4[14]);                 // O4 = aduana
-    setParam('b_m1',    r4[17]);                  // R4 = margen mayorista
-    setParam('b_m2',    r4[20]);                  // U4 = margen minorista
+    if(toNumber(r3[1])) $('b_tc').value = toNumber(r3[1]);
+    setParam('b_viaje', r2[23]); setParam('b_red', r2[24]); setParam('b_shopify',r2[25]);
+    setParam('b_aduana', r4[14]); setParam('b_m1', r4[17]); setParam('b_m2', r4[20]);
   } else if(cat==='plata'){
     const r2=rows[1]||[], r4=rows[3]||[];
-    setParam('p_viaje',  r2[11]);                 // L2 = gastos viaje
-    setParam('p_red',    r2[12]);                 // M2 = redcompra
-    setParam('p_shopify',r2[13]);                 // N2 = comision shopify
-    setParam('p_m2',     r4[8]);                  // I4 = margen minorista
+    setParam('p_viaje', r2[11]); setParam('p_red', r2[12]); setParam('p_shopify',r2[13]); setParam('p_m2', r4[8]);
   } else if(cat==='china'){
     const r2=rows[1]||[], r4=rows[3]||[];
-    setParam('c_viaje',  r2[16]);                 // Q2 = gastos viaje
-    setParam('c_red',    r2[17]);                 // R2 = redcompra
-    setParam('c_shopify',r2[18]);                 // S2 = comision shopify
-    setParam('c_aduana', r4[7]);                  // H4 = aduana
-    setParam('c_m1',     r4[10]);                 // K4 = margen mayorista
-    setParam('c_m2',     r4[13]);                 // N4 = margen minorista
+    setParam('c_viaje', r2[16]); setParam('c_red', r2[17]); setParam('c_shopify',r2[18]);
+    setParam('c_aduana', r4[7]); setParam('c_m1', r4[10]); setParam('c_m2', r4[13]);
   }
-  // ─── Importar piezas (desde fila 6, índice 5) ───
-  // Columnas fijas según planilla original:
-  // A=0 nombre, B=1 proveedor, C=2 tipo, D=3 sku, E=4 stock
-  // Brasil: F=5 gramo, G=6 mo, H=7 baño, I=8 grosor, J=9 peso, K=10 bruto, foto=AD(29)
-  // Plata:  G=6 costo, foto=R(17)
-  // China:  G=6 valorcl, foto=W(22)
+
+  // Buscar fila de encabezado real dentro de las primeras 25 filas.
+  let headerRow=-1, headerMap={};
+  for(let r=0;r<Math.min(rows.length,25);r++){
+    const row=rows[r]||[];
+    const m={}; row.forEach((h,i)=>{const k=norm(h); if(k)m[k]=i;});
+    const hasName = col(m,['nombre','producto','descripcion','descripción','descrição','descricao'])>=0;
+    const hasStock = col(m,['stock','qtde','qtd','cantidad','cant','unidades'])>=0;
+    const hasCost = col(m,['vunit','v.unit','valor unitario','valor unit','precio','precio bruto','costo','valor cl','$ x gramo'])>=0;
+    if(hasName && (hasStock || hasCost || Object.keys(m).length>=4)){ headerRow=r; headerMap=m; break; }
+  }
+  // Si no encuentra encabezado, usa el formato antiguo: encabezado fila 5, datos desde fila 6.
+  if(headerRow<0){
+    headerRow=4;
+    headerMap={nombre:0,proveedor:1,tipo:2,id:3,stock:4,xgramo:5,manoobra:6,bano:7,camada:8,pesoproducto:9,preciobruto:10,costo:6,valorcl:6,fotourl:cat==='brasil'?29:(cat==='plata'?17:22)};
+  }
+
+  const cNombre=col(headerMap,['nombre','producto','descripcion','descripción','descrição','descricao']);
+  const cProveedor=col(headerMap,['proveedor','supplier','fornecedor']);
+  const cTipo=col(headerMap,['tipo de joya','tipo','categoria','categoría']);
+  const cSku=col(headerMap,['id','sku','codigo','código','cod']);
+  const cStock=col(headerMap,['stock','qtde','qtd','cantidad','cant','unidades']);
+  const cGrm=col(headerMap,['$ x gramo','x gramo','gramo','r$/gramo','r$ gramo']);
+  const cMo=col(headerMap,['$ mano obra','mano obra','mo','m.obra']);
+  const cBano=col(headerMap,['$ baño','baño','banho','bano']);
+  const cGrosor=col(headerMap,['camada','grosor']);
+  const cPeso=col(headerMap,['peso producto','peso','peso g']);
+  const cBruto=col(headerMap,['precio bruto','p.bruto','bruto','v unit','v. unit','valor unitario','precio unitario','precio']);
+  const cCosto=col(headerMap,['costo','costo clp','$ primera ganancia','valor cl','v unit','v. unit','valor unitario','precio unitario','precio']);
+  const cValorCl=col(headerMap,['valor cl','valorcl','costo','v unit','v. unit','valor unitario','precio unitario','precio']);
+  const cFoto=col(headerMap,['foto url','foto','imagen','image','url imagen']);
+
   let n=0;
-  for(let r=5;r<rows.length;r++){
-    const row=rows[r];if(!row)continue;
-    const nombre=String(row[0]||'').trim();
-    const sku=String(row[3]||'').trim();
-    const stock=num(row[4]);
-    if(!nombre&&!sku)continue;                    // fila vacía
-    if(!nombre&&stock===0)continue;               // fila de fórmula vacía
-    let item=inventory.find(i=>i.sku===sku);
-    const isNew=!item;
+  for(let r=headerRow+1;r<rows.length;r++){
+    const row=rows[r]; if(!row)continue;
+    const nombreBase = cNombre>=0 ? clean(row[cNombre]) : '';
+    const skuBase = cSku>=0 ? clean(row[cSku]) : '';
+    const stock = cStock>=0 ? toNumber(row[cStock]) : 1;
+    if(!nombreBase && !skuBase) continue;
+    // Evita importar totales, encabezados repetidos o filas claramente vacías.
+    if(['total','subtotal','nombre','producto','descripcion'].includes(norm(nombreBase))) continue;
+
+    const tipoRaw = cTipo>=0 ? clean(row[cTipo]) : '';
+    const tipo = TIPO_CODE[tipoRaw] ? tipoRaw : guessTipo(nombreBase+' '+tipoRaw);
+    let sku = skuBase || nextId(cat,tipo);
+    let item = inventory.find(i=>i.sku===sku);
+    const isNew = !item;
     if(isNew){
-      item={sku:sku||nextId(cat,row[2]||'Otro'),categoria:cat,fechaCreacion:nowISO(),estado:'activo'};
+      item={sku,categoria:cat,fechaCreacion:nowISO(),estado:'activo'};
       inventory.push(item);
     }
-    item.nombre  = nombre||item.nombre||'';
-    item.proveedor = String(row[1]||item.proveedor||'');
-    const tipoRaw = String(row[2]||'').trim();
-    item.tipo    = TIPO_CODE[tipoRaw]?tipoRaw:(item.tipo||'Otro');
-    item.stock   = stock;
-    item.fechaMod= nowISO();
+    item.nombre = nombreBase || item.nombre || '';
+    item.proveedor = cProveedor>=0 ? clean(row[cProveedor]) : (item.proveedor||'');
+    item.tipo = tipo;
+    item.stock = stock;
+    item.fechaMod = nowISO();
+    item.estado = stock<=0 ? 'agotado' : (stock<=2 ? 'bajo' : 'activo');
+
     if(cat==='brasil'){
-      item.grm    = num(row[5]);
-      item.mo     = num(row[6]);
-      item.bano   = num(row[7]);
-      item.grosor = num(row[8]);
-      item.peso   = num(row[9]);
-      item.bruto  = num(row[10]);
-      const fotoVal = row[29];  // columna AD
-      if(fotoVal) item.fotoUrl = String(fotoVal);
+      item.grm = cGrm>=0 ? toNumber(row[cGrm]) : (item.grm||0);
+      item.mo = cMo>=0 ? toNumber(row[cMo]) : (item.mo||0);
+      item.bano = cBano>=0 ? toNumber(row[cBano]) : (item.bano||0);
+      item.grosor = cGrosor>=0 ? toNumber(row[cGrosor]) : (item.grosor||0);
+      item.peso = cPeso>=0 ? toNumber(row[cPeso]) : (item.peso||0);
+      item.bruto = cBruto>=0 ? toNumber(row[cBruto]) : (item.bruto||0);
     } else if(cat==='plata'){
-      item.costoBase = num(row[6]);  // columna G
-      const fotoVal = row[17];       // columna R
-      if(fotoVal) item.fotoUrl = String(fotoVal);
+      item.costoBase = cCosto>=0 ? toNumber(row[cCosto]) : (item.costoBase||0);
     } else if(cat==='china'){
-      item.valorcl = num(row[6]);    // columna G
-      const fotoVal = row[22];       // columna W
-      if(fotoVal) item.fotoUrl = String(fotoVal);
+      item.valorcl = cValorCl>=0 ? toNumber(row[cValorCl]) : (item.valorcl||0);
     }
+    if(cFoto>=0 && clean(row[cFoto])) item.fotoUrl = clean(row[cFoto]);
+
     logMovStock('importacion_excel',item,stock,isNew?0:stock,stock,`Importado Excel (${isNew?'nuevo':'actualizado'})`);
     fbSave.item(item);
     n++;
