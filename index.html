@@ -1,0 +1,1927 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Punto Brassil · Sistema de Gestión</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --ink:#2b2420;--ink-soft:#6b5d52;--ink-faint:#9c8f80;
+  --paper:#faf6ef;--panel:#fff;--field:#fffdf9;--line:#e6dccb;
+  --gold:#a9802f;--gold-deep:#7c5b1e;--gold-soft:#f3e6c8;
+  --silver:#7d8694;--silver-soft:#eef1f4;
+  --bronze:#9c5b3c;--bronze-soft:#f4e3da;
+  --good:#3f6b4a;--good-soft:#e3efe4;
+  --danger:#b5483a;--danger-soft:#f7e3e0;
+  --warn:#a8761f;--warn-soft:#f6ecd2;
+  --blue:#2a5ba8;--blue-soft:#dce9fb;
+  --gray:#8a8178;--gray-soft:#eee9e1;
+  --purple:#6b4a8f;--purple-soft:#ede6f6;
+  --shadow:0 1px 2px rgba(43,36,32,.06),0 8px 24px rgba(43,36,32,.06);
+  --radius:10px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+h1,h2,h3{font-family:Georgia,"Times New Roman",serif;font-weight:600;margin:0;}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 16px 80px;}
+
+/* HEADER */
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:14px;flex-wrap:wrap;}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand .mark{width:40px;height:40px;border-radius:50%;background:conic-gradient(from 220deg,var(--gold),var(--gold-deep),var(--gold));display:flex;align-items:center;justify-content:center;color:#fff;font-family:Georgia,serif;font-size:15px;box-shadow:var(--shadow);flex-shrink:0;}
+header h1{font-size:21px;}
+header p.sub{margin:3px 0 0;color:var(--ink-soft);font-size:12.5px;}
+.fb-banner{display:flex;align-items:center;gap:7px;font-size:11.5px;padding:5px 11px;border-radius:999px;font-weight:700;}
+.fb-banner.local{background:var(--gray-soft);color:var(--gray);}
+.fb-banner.ok{background:var(--good-soft);color:var(--good);}
+.fb-banner.error{background:var(--danger-soft);color:var(--danger);}
+.fb-dot{width:7px;height:7px;border-radius:50%;background:currentColor;}
+
+/* ACTION BAR */
+.actionbar{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 16px;margin-bottom:14px;}
+.actionbar .grp-label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);font-weight:700;margin-bottom:7px;}
+.ab-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px;}
+.ab-row:last-child{margin-bottom:0;}
+.btn-sm{border:1px solid var(--line);background:var(--field);color:var(--ink);padding:7px 12px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;}
+.btn-sm:hover{background:var(--gold-soft);border-color:var(--gold);}
+.btn-sm.excel{background:var(--good-soft);color:var(--good);border-color:transparent;}
+.btn-sm.json{background:var(--silver-soft);color:var(--silver);border-color:transparent;}
+input[type="file"]{display:none;}
+
+/* TABS */
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+.tab-btn{border:1px solid var(--line);background:var(--panel);color:var(--ink-soft);padding:8px 13px;border-radius:999px;font-size:12.5px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:7px;transition:.15s ease;}
+.tab-btn .dot{width:8px;height:8px;border-radius:50%;}
+.tab-btn.active{color:#fff;border-color:transparent;box-shadow:var(--shadow);}
+.tab-btn[data-tab="brasil"].active{background:var(--gold);}
+.tab-btn[data-tab="plata"].active{background:var(--silver);}
+.tab-btn[data-tab="china"].active{background:var(--bronze);}
+.tab-btn[data-tab="inventario"].active{background:var(--ink);}
+.tab-btn[data-tab="catalogo"].active{background:var(--purple);}
+.tab-btn[data-tab="ventas"].active{background:var(--good);}
+.tab-btn[data-tab="abonos"].active{background:var(--blue);}
+.tab-btn[data-tab="clientes"].active{background:var(--warn);}
+.tab-btn[data-tab="movimientos"].active{background:var(--gray);}
+.tab-btn[data-tab="dashboard"].active{background:var(--gold-deep);}
+.tab-btn[data-tab="configuracion"].active{background:var(--ink-soft);}
+.tab-btn:not(.active):hover{background:var(--gold-soft);}
+
+/* PANELS */
+.panel{display:none;}
+.panel.active{display:block;animation:fade .18s ease;}
+@keyframes fade{from{opacity:0;transform:translateY(2px);}to{opacity:1;transform:none;}}
+
+/* CARDS */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px;margin-bottom:16px;}
+.card h2{font-size:15.5px;margin-bottom:2px;}
+.card .desc{color:var(--ink-soft);font-size:12px;margin-bottom:12px;}
+
+/* PARAMS */
+.params{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;}
+.param label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:4px;font-weight:600;}
+.param .input-row{position:relative;}
+.param input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:13.5px;font-family:inherit;background:var(--field);color:var(--ink);}
+.param input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft);}
+.param.pct .input-row::after{content:"%";position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--ink-soft);font-size:12px;}
+.param.pct input{padding-right:24px;}
+
+/* ADD CARD */
+.add-card{background:linear-gradient(180deg,#fffefb 0%,var(--panel) 100%);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px 16px;margin-bottom:16px;position:relative;overflow:hidden;}
+.add-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;}
+.add-card.brasil::before{background:var(--gold);}.add-card.plata::before{background:var(--silver);}.add-card.china::before{background:var(--bronze);}
+.add-card.ventas::before{background:var(--good);}.add-card.abonos::before{background:var(--blue);}.add-card.clientes-form::before{background:var(--warn);}
+.add-card h2{font-size:16px;display:flex;align-items:center;gap:8px;}
+.add-card h2 .icon{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;}
+.add-card.brasil h2 .icon{background:var(--gold);}.add-card.plata h2 .icon{background:var(--silver);}.add-card.china h2 .icon{background:var(--bronze);}
+.add-card.ventas h2 .icon{background:var(--good);}.add-card.abonos h2 .icon{background:var(--blue);}.add-card.clientes-form h2 .icon{background:var(--warn);}
+.add-card .desc{color:var(--ink-soft);font-size:12px;margin:3px 0 14px;}
+
+/* FORM GRID */
+.fsl{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);font-weight:700;margin:14px 0 9px;display:flex;align-items:center;gap:8px;}
+.fsl::after{content:"";flex:1;height:1px;background:var(--line);}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;}
+.field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:4px;font-weight:600;}
+.field input,.field select,.field textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:7px;font-size:13.5px;font-family:inherit;background:var(--field);color:var(--ink);}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft);}
+.field.span2{grid-column:span 2;}.field.span3{grid-column:span 3;}
+.field .readout{padding:9px 10px;border:1px solid var(--line);border-radius:7px;background:#f5f0e6;font-size:13.5px;color:var(--ink-soft);}
+@media(max-width:560px){.field.span2,.field.span3{grid-column:span 1;}}
+
+/* BUTTONS */
+.aca{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px;flex-wrap:wrap;}
+.btn{border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s ease;display:inline-flex;align-items:center;gap:7px;}
+.btn-primary{color:#fff;box-shadow:var(--shadow);}
+.add-card.brasil .btn-primary{background:var(--gold);}.add-card.plata .btn-primary{background:var(--silver);}
+.add-card.china .btn-primary{background:var(--bronze);}.add-card.ventas .btn-primary{background:var(--good);}
+.add-card.abonos .btn-primary{background:var(--blue);}.add-card.clientes-form .btn-primary{background:var(--warn);}
+.btn-primary:hover{filter:brightness(1.07);transform:translateY(-1px);}
+.btn-ghost{background:transparent;color:var(--ink-soft);border:1px solid var(--line);}
+.btn-ghost:hover{background:#f5f0e6;color:var(--ink);}
+.btn-green{background:var(--good);color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-green:hover{filter:brightness(1.07);}
+.btn-blue{background:var(--blue);color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;}
+.id-preview{font-size:11.5px;color:var(--ink-faint);}
+.id-preview b{color:var(--gold-deep);font-family:Georgia,serif;}
+
+/* TABLES */
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+thead th{text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);padding:7px 7px;border-bottom:2px solid var(--line);white-space:nowrap;font-weight:700;}
+thead th.left{text-align:left;}
+thead th.calc-col{color:var(--ink-faint);}
+tbody td{padding:5px 7px;border-bottom:1px solid var(--line);white-space:nowrap;}
+tbody tr:hover{background:#fbf7ee;}
+td.left{text-align:left;}
+td input[type="text"],td input[type="number"]{width:100%;min-width:60px;border:1px solid transparent;background:transparent;padding:5px 5px;border-radius:5px;font-size:12.5px;font-family:inherit;text-align:right;color:var(--ink);}
+td input[type="text"]{text-align:left;min-width:100px;}
+td select{width:100%;border:1px solid transparent;background:transparent;padding:5px 4px;border-radius:5px;font-size:12.5px;font-family:inherit;color:var(--ink);}
+td input:focus,td select:focus{outline:none;border-color:var(--gold);background:var(--field);box-shadow:0 0 0 2px var(--gold-soft);}
+td.calc{text-align:right;color:var(--ink-soft);font-variant-numeric:tabular-nums;background:#fbf8f1;}
+td.calc.strong{color:var(--ink);font-weight:700;}
+td.calc.final{color:var(--good);font-weight:700;}
+td.rm{text-align:center;}
+td.rm button{border:none;background:none;color:var(--danger);cursor:pointer;font-size:14px;padding:3px 5px;border-radius:5px;}
+td.rm button:hover{background:var(--danger-soft);}
+td input.id-input{font-family:Georgia,serif;letter-spacing:.02em;color:var(--ink-soft);text-align:left;min-width:100px;}
+.table-scroll{overflow-x:auto;border-radius:8px;-webkit-overflow-scrolling:touch;}
+.empty-row td{text-align:center;color:var(--ink-faint);padding:18px 8px;font-style:italic;}
+.row-actions{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap;}
+.hint{color:var(--ink-soft);font-size:11.5px;}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
+.badge-activo{background:var(--good-soft);color:var(--good);}
+.badge-agotado{background:var(--danger-soft);color:var(--danger);}
+.badge-bajo{background:var(--warn-soft);color:var(--warn);}
+.badge-eliminado,.badge-anulada{background:var(--gray-soft);color:var(--gray);}
+.badge-pagada{background:var(--good-soft);color:var(--good);}
+.badge-pendiente{background:var(--danger-soft);color:var(--danger);}
+.badge-abonada{background:var(--warn-soft);color:var(--warn);}
+.badge-deuda{background:var(--danger-soft);color:var(--danger);}
+.badge-aldia{background:var(--good-soft);color:var(--good);}
+
+/* SUMMARY / STATS */
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;}
+.stat{background:var(--field);border:1px solid var(--line);border-radius:8px;padding:12px 14px;cursor:default;}
+.stat .label{font-size:10px;text-transform:uppercase;color:var(--ink-soft);letter-spacing:.04em;font-weight:700;margin-bottom:5px;}
+.stat .value{font-size:20px;font-family:Georgia,serif;font-weight:700;}
+.stat.accent .value{color:var(--good);}
+.stat.warn .value{color:var(--warn);}
+.stat.danger .value{color:var(--danger);}
+.stat.blue .value{color:var(--blue);}
+
+/* ALERTS */
+.alert-list{display:flex;flex-direction:column;gap:7px;}
+.alert-item{display:flex;align-items:flex-start;gap:9px;padding:9px 11px;border-radius:8px;font-size:12.5px;}
+.alert-item.warn{background:var(--warn-soft);color:#6b4e10;}
+.alert-item.danger{background:var(--danger-soft);color:var(--danger);}
+.alert-item .ico{font-weight:900;flex-shrink:0;}
+.alert-empty{color:var(--ink-faint);font-size:12.5px;font-style:italic;}
+
+/* CATALOG */
+.cat-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+.cat-filters input,.cat-filters select{padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;font-family:inherit;background:var(--field);color:var(--ink);}
+.cat-filters input:focus,.cat-filters select:focus{outline:none;border-color:var(--gold);}
+.catalog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:14px;}
+.catalog-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;transition:.15s ease;}
+.catalog-card:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(43,36,32,.12);}
+.catalog-card .foto{width:100%;height:140px;object-fit:cover;background:var(--gold-soft);display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:32px;}
+.catalog-card .foto img{width:100%;height:140px;object-fit:cover;}
+.catalog-card .cinfo{padding:10px 12px;}
+.catalog-card .cname{font-family:Georgia,serif;font-weight:600;font-size:14px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.catalog-card .csku{font-size:10.5px;color:var(--ink-faint);font-family:Georgia,serif;margin-bottom:4px;}
+.catalog-card .cprice{font-size:16px;font-weight:700;color:var(--good);}
+.catalog-card .cmeta{display:flex;justify-content:space-between;align-items:center;margin-top:8px;}
+.catalog-card .cbtns{display:flex;gap:6px;margin-top:8px;}
+.catalog-card .cbtn{flex:1;border:none;border-radius:6px;padding:7px 4px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;}
+.cbtn-detail{background:var(--gold-soft);color:var(--gold-deep);}
+.cbtn-wa{background:#25d366;color:#fff;}
+.cbtn-wa:hover{background:#1da851;}
+.empty-catalog{text-align:center;color:var(--ink-faint);font-style:italic;padding:40px;grid-column:1/-1;}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:var(--panel);border-radius:var(--radius);box-shadow:0 20px 60px rgba(0,0,0,.25);width:100%;max-width:700px;max-height:90vh;overflow-y:auto;padding:22px 24px;position:relative;margin:auto;}
+.modal-box h2{font-size:18px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--line);}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);line-height:1;}
+.modal-close:hover{color:var(--danger);}
+.modal-section{margin-bottom:16px;}
+.modal-section h3{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint);margin-bottom:8px;}
+
+/* FILTER BAR */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;}
+.filter-bar input,.filter-bar select{padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--field);color:var(--ink);}
+.filter-bar input:focus,.filter-bar select:focus{outline:none;border-color:var(--gold);}
+
+/* CONFIG */
+.config-section{background:var(--field);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px;}
+.config-section h3{font-size:14px;margin-bottom:12px;color:var(--ink);}
+.config-section textarea{width:100%;min-height:80px;padding:9px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;font-family:inherit;background:var(--panel);color:var(--ink);resize:vertical;}
+.config-section textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft);}
+.vars-hint{font-size:11px;color:var(--ink-faint);margin-top:5px;line-height:1.5;}
+
+/* TOAST */
+.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,12px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:.25s ease;z-index:200;max-width:90vw;text-align:center;}
+.toast.show{opacity:1;transform:translate(-50%,0);}
+
+/* FOTO UPLOAD */
+.foto-thumb{width:72px;height:72px;border-radius:8px;object-fit:cover;background:var(--gold-soft);display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0;border:1px solid var(--line);overflow:hidden;}
+.foto-thumb img{width:72px;height:72px;object-fit:cover;display:block;}
+.foto-controls{display:flex;flex-direction:column;gap:6px;flex:1;min-width:140px;}
+.btn-foto{background:var(--gold-soft);color:var(--gold-deep);border:1px solid var(--gold);border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;width:fit-content;}
+.btn-foto:hover{background:var(--gold);color:#fff;}
+.foto-url-input{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:6px;font-size:12px;font-family:inherit;background:var(--field);color:var(--ink-soft);}
+.foto-url-input:focus{outline:none;border-color:var(--gold);}
+.foto-url-hint{font-size:10.5px;color:var(--ink-faint);}
+
+/* SALDO INDICATOR */
+.saldo-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;font-size:13px;margin-top:8px;}
+.saldo-bar.ok{background:var(--good-soft);color:var(--good);}
+.saldo-bar.warn{background:var(--warn-soft);color:var(--warn);}
+.saldo-bar.danger{background:var(--danger-soft);color:var(--danger);}
+
+/* FOOTER */
+footer.note{margin-top:22px;color:var(--ink-soft);font-size:11.5px;line-height:1.7;border-top:1px solid var(--line);padding-top:14px;}
+footer.note strong{color:var(--ink);}
+
+@media(max-width:720px){
+  header.top{flex-direction:column;align-items:flex-start;}
+  .card,.add-card{padding:14px 12px;}
+  thead th{font-size:9.5px;padding:6px 5px;}
+  tbody td{padding:4px 5px;}
+  td input[type="text"],td input[type="number"],td select{font-size:12px;}
+  .aca{flex-direction:column;align-items:stretch;}
+  .aca .btn{width:100%;justify-content:center;}
+  .ab-row{flex-direction:column;}
+  .btn-sm{justify-content:center;}
+  .catalog-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="brand">
+    <div class="mark">PB</div>
+    <div>
+      <h1>Punto Brassil · Sistema de Gestión</h1>
+      <p class="sub">Inventario · Ventas · Clientes · Abonos · Catálogo</p>
+    </div>
+  </div>
+  <div id="fbBanner" class="fb-banner local"><span class="fb-dot"></span><span id="fbBannerText">Modo local</span></div>
+</header>
+
+<!-- BARRA DE ACCIONES -->
+<div class="actionbar">
+  <div class="grp-label">Excel y respaldos</div>
+  <div class="ab-row">
+    <button class="btn-sm excel" id="btnExportExcel">⬇ Exportar Excel</button>
+    <button class="btn-sm excel" id="btnImportExcelTrigger">⬆ Importar Excel</button>
+    <input type="file" id="fileImportExcel" accept=".xlsx,.xls">
+    <button class="btn-sm json" id="btnBackupJson">⬇ Respaldo JSON</button>
+    <button class="btn-sm json" id="btnRestoreJsonTrigger">⬆ Restaurar JSON</button>
+    <input type="file" id="fileRestoreJson" accept=".json">
+    <button class="btn-sm" id="btnCsvInventario">CSV Inventario</button>
+    <button class="btn-sm" id="btnCsvVentas">CSV Ventas</button>
+    <button class="btn-sm" id="btnCsvClientes">CSV Clientes</button>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="brasil"><span class="dot" style="background:var(--gold)"></span>Brasil</button>
+  <button class="tab-btn" data-tab="plata"><span class="dot" style="background:var(--silver)"></span>Plata Chile</button>
+  <button class="tab-btn" data-tab="china"><span class="dot" style="background:var(--bronze)"></span>China</button>
+  <button class="tab-btn" data-tab="inventario"><span class="dot" style="background:var(--ink)"></span>Inventario</button>
+  <button class="tab-btn" data-tab="catalogo"><span class="dot" style="background:var(--purple)"></span>Catálogo</button>
+  <button class="tab-btn" data-tab="ventas"><span class="dot" style="background:var(--good)"></span>Ventas</button>
+  <button class="tab-btn" data-tab="abonos"><span class="dot" style="background:var(--blue)"></span>Abonos</button>
+  <button class="tab-btn" data-tab="clientes"><span class="dot" style="background:var(--warn)"></span>Clientes</button>
+  <button class="tab-btn" data-tab="movimientos"><span class="dot" style="background:var(--gray)"></span>Movimientos</button>
+  <button class="tab-btn" data-tab="dashboard"><span class="dot" style="background:var(--gold-deep)"></span>Dashboard</button>
+  <button class="tab-btn" data-tab="configuracion"><span class="dot" style="background:var(--ink-soft)"></span>Configuración</button>
+</div>
+
+<!-- ===== BRASIL ===== -->
+<div class="panel active" id="panel-brasil">
+  <div class="card">
+    <h2>Parámetros — Brasil</h2><div class="desc">Costo en reales, conversión a CLP, aduana y márgenes.</div>
+    <div class="params">
+      <div class="param"><label>CLP por R$</label><div class="input-row"><input type="number" id="b_tc" value="179" step="1"></div></div>
+      <div class="param pct"><label>Aduana</label><div class="input-row"><input type="number" id="b_aduana" value="6" step="0.1"></div></div>
+      <div class="param pct"><label>Margen mayorista</label><div class="input-row"><input type="number" id="b_m1" value="50" step="1"></div></div>
+      <div class="param pct"><label>Margen minorista</label><div class="input-row"><input type="number" id="b_m2" value="50" step="1"></div></div>
+      <div class="param pct"><label>IVA</label><div class="input-row"><input type="number" id="b_iva" value="19" step="0.1"></div></div>
+      <div class="param pct"><label>Gastos de viaje</label><div class="input-row"><input type="number" id="b_viaje" value="25" step="1"></div></div>
+      <div class="param pct"><label>Redcompra</label><div class="input-row"><input type="number" id="b_red" value="3" step="0.1"></div></div>
+      <div class="param pct"><label>Shopify</label><div class="input-row"><input type="number" id="b_shopify" value="2" step="0.1"></div></div>
+    </div>
+  </div>
+  <div class="add-card brasil">
+    <h2><span class="icon">+</span>Agregar pieza — Brasil</h2>
+    <div class="desc">R$/gramo, mano de obra, baño y grosor prellenados con valores habituales.</div>
+    <div class="fsl">Datos de la pieza</div>
+    <div class="form-grid">
+      <div class="field"><label>Nombre</label><input type="text" id="bf_nombre" placeholder="Anillo corazón"></div>
+      <div class="field"><label>Proveedor</label><input type="text" id="bf_proveedor" placeholder="Adonai"></div>
+      <div class="field"><label>Tipo</label><select id="bf_tipo"><option>Anillo</option><option>Collar</option><option>Pulsera</option><option>Aros</option><option>Cadena</option><option>Dije</option><option>Otro</option></select></div>
+      <div class="field"><label>Stock</label><input type="number" id="bf_stock" value="1" min="0"></div>
+      <div class="field span2"><label>Foto de la pieza</label>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div id="bf_foto_prev" class="foto-thumb">💍</div>
+          <div class="foto-controls">
+            <button type="button" class="btn-foto" onclick="triggerFotoUpload('bf')">📷 Subir foto desde el celular o PC</button>
+            <input type="file" id="bf_foto_file" accept="image/*">
+            <input type="text" class="foto-url-input" id="bf_foto" placeholder="…o pega una URL de imagen" oninput="updateFotoPreview('bf')">
+            <span class="foto-url-hint">La foto se comprime automáticamente y se guarda con la pieza.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="fsl">Costo (R$)</div>
+    <div class="form-grid">
+      <div class="field"><label>R$/gramo</label><input type="number" id="bf_grm" value="720" step="0.01"></div>
+      <div class="field"><label>R$ M.Obra</label><input type="number" id="bf_mo" value="3.5" step="0.01"></div>
+      <div class="field"><label>R$ Baño</label><input type="number" id="bf_bano" value="350" step="0.01"></div>
+      <div class="field"><label>Grosor</label><input type="number" id="bf_grosor" value="3" step="0.01"></div>
+      <div class="field"><label>Peso (g)</label><input type="number" id="bf_peso" value="0" step="0.01"></div>
+      <div class="field"><label>R$ P.Bruto</label><input type="number" id="bf_bruto" value="0" step="0.01"></div>
+    </div>
+    <div class="aca">
+      <span class="id-preview">Próximo ID: <b id="bf_idpreview">—</b></span>
+      <div style="display:flex;gap:8px;"><button class="btn btn-ghost" id="bf_clear">Limpiar</button><button class="btn btn-primary" id="bf_submit">+ Agregar</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Inventario Brasil</h2>
+    <div class="table-scroll"><table id="t_brasil">
+      <thead><tr><th class="left">Estado</th><th class="left">ID</th><th class="left">Nombre</th><th class="left">Proveedor</th><th class="left">Tipo</th><th>Stock</th><th>R$/g</th><th>MO</th><th>Baño</th><th>Grosor</th><th>Peso</th><th>Bruto</th><th class="calc-col">Costo CLP</th><th class="calc-col">Mayor.</th><th class="calc-col">Minor.</th><th class="calc-col">Final</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+  <div class="card"><h2>Resumen Brasil</h2><div class="summary" id="sum_brasil"></div></div>
+</div>
+
+<!-- ===== PLATA ===== -->
+<div class="panel" id="panel-plata">
+  <div class="card">
+    <h2>Parámetros — Plata Chile</h2><div class="desc">Costo ya en pesos chilenos.</div>
+    <div class="params">
+      <div class="param pct"><label>Margen minorista</label><div class="input-row"><input type="number" id="p_m2" value="50" step="1"></div></div>
+      <div class="param pct"><label>IVA</label><div class="input-row"><input type="number" id="p_iva" value="19" step="0.1"></div></div>
+      <div class="param pct"><label>Gastos de viaje</label><div class="input-row"><input type="number" id="p_viaje" value="25" step="1"></div></div>
+      <div class="param pct"><label>Redcompra</label><div class="input-row"><input type="number" id="p_red" value="3" step="0.1"></div></div>
+      <div class="param pct"><label>Shopify</label><div class="input-row"><input type="number" id="p_shopify" value="2" step="0.1"></div></div>
+    </div>
+  </div>
+  <div class="add-card plata">
+    <h2><span class="icon">+</span>Agregar pieza — Plata</h2>
+    <div class="fsl">Datos de la pieza</div>
+    <div class="form-grid">
+      <div class="field"><label>Nombre</label><input type="text" id="pf_nombre" placeholder="Anillo corazón"></div>
+      <div class="field"><label>Proveedor</label><input type="text" id="pf_proveedor" placeholder="DJoyas"></div>
+      <div class="field"><label>Tipo</label><select id="pf_tipo"><option>Anillo</option><option>Collar</option><option>Pulsera</option><option>Aros</option><option>Cadena</option><option>Dije</option><option>Otro</option></select></div>
+      <div class="field"><label>Stock</label><input type="number" id="pf_stock" value="1" min="0"></div>
+      <div class="field span2"><label>Foto de la pieza</label>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div id="pf_foto_prev" class="foto-thumb">💍</div>
+          <div class="foto-controls">
+            <button type="button" class="btn-foto" onclick="triggerFotoUpload('pf')">📷 Subir foto desde el celular o PC</button>
+            <input type="file" id="pf_foto_file" accept="image/*">
+            <input type="text" class="foto-url-input" id="pf_foto" placeholder="…o pega una URL de imagen" oninput="updateFotoPreview('pf')">
+            <span class="foto-url-hint">La foto se comprime automáticamente y se guarda con la pieza.</span>
+          </div>
+        </div>
+      </div>
+      <div class="field"><label>Costo (CLP)</label><input type="number" id="pf_costo" value="0" step="1"></div>
+    </div>
+    <div class="aca">
+      <span class="id-preview">Próximo ID: <b id="pf_idpreview">—</b></span>
+      <div style="display:flex;gap:8px;"><button class="btn btn-ghost" id="pf_clear">Limpiar</button><button class="btn btn-primary" id="pf_submit">+ Agregar</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Inventario Plata</h2>
+    <div class="table-scroll"><table id="t_plata">
+      <thead><tr><th class="left">Estado</th><th class="left">ID</th><th class="left">Nombre</th><th class="left">Proveedor</th><th class="left">Tipo</th><th>Stock</th><th>Costo CLP</th><th class="calc-col">Minor.</th><th class="calc-col">Final</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+  <div class="card"><h2>Resumen Plata</h2><div class="summary" id="sum_plata"></div></div>
+</div>
+
+<!-- ===== CHINA ===== -->
+<div class="panel" id="panel-china">
+  <div class="card">
+    <h2>Parámetros — Acero Oro China</h2><div class="desc">Valor CL en pesos, se suma aduana y se aplican márgenes.</div>
+    <div class="params">
+      <div class="param pct"><label>Aduana</label><div class="input-row"><input type="number" id="c_aduana" value="6" step="0.1"></div></div>
+      <div class="param pct"><label>Margen mayorista</label><div class="input-row"><input type="number" id="c_m1" value="50" step="1"></div></div>
+      <div class="param pct"><label>Margen minorista</label><div class="input-row"><input type="number" id="c_m2" value="50" step="1"></div></div>
+      <div class="param pct"><label>IVA</label><div class="input-row"><input type="number" id="c_iva" value="19" step="0.1"></div></div>
+      <div class="param pct"><label>Gastos de viaje</label><div class="input-row"><input type="number" id="c_viaje" value="25" step="1"></div></div>
+      <div class="param pct"><label>Redcompra</label><div class="input-row"><input type="number" id="c_red" value="3" step="0.1"></div></div>
+      <div class="param pct"><label>Shopify</label><div class="input-row"><input type="number" id="c_shopify" value="2" step="0.1"></div></div>
+    </div>
+  </div>
+  <div class="add-card china">
+    <h2><span class="icon">+</span>Agregar pieza — China</h2>
+    <div class="fsl">Datos de la pieza</div>
+    <div class="form-grid">
+      <div class="field"><label>Nombre</label><input type="text" id="cf_nombre" placeholder="Anillo corazón"></div>
+      <div class="field"><label>Proveedor</label><input type="text" id="cf_proveedor" placeholder="Proveedor"></div>
+      <div class="field"><label>Tipo</label><select id="cf_tipo"><option>Anillo</option><option>Collar</option><option>Pulsera</option><option>Aros</option><option>Cadena</option><option>Dije</option><option>Otro</option></select></div>
+      <div class="field"><label>Stock</label><input type="number" id="cf_stock" value="1" min="0"></div>
+      <div class="field span2"><label>Foto de la pieza</label>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div id="cf_foto_prev" class="foto-thumb">💍</div>
+          <div class="foto-controls">
+            <button type="button" class="btn-foto" onclick="triggerFotoUpload('cf')">📷 Subir foto desde el celular o PC</button>
+            <input type="file" id="cf_foto_file" accept="image/*">
+            <input type="text" class="foto-url-input" id="cf_foto" placeholder="…o pega una URL de imagen" oninput="updateFotoPreview('cf')">
+            <span class="foto-url-hint">La foto se comprime automáticamente y se guarda con la pieza.</span>
+          </div>
+        </div>
+      </div>
+      <div class="field"><label>Valor CL (CLP)</label><input type="number" id="cf_valorcl" value="0" step="1"></div>
+    </div>
+    <div class="aca">
+      <span class="id-preview">Próximo ID: <b id="cf_idpreview">—</b></span>
+      <div style="display:flex;gap:8px;"><button class="btn btn-ghost" id="cf_clear">Limpiar</button><button class="btn btn-primary" id="cf_submit">+ Agregar</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Inventario China</h2>
+    <div class="table-scroll"><table id="t_china">
+      <thead><tr><th class="left">Estado</th><th class="left">ID</th><th class="left">Nombre</th><th class="left">Proveedor</th><th class="left">Tipo</th><th>Stock</th><th>Valor CL</th><th class="calc-col">Costo</th><th class="calc-col">Mayor.</th><th class="calc-col">Minor.</th><th class="calc-col">Final</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+  <div class="card"><h2>Resumen China</h2><div class="summary" id="sum_china"></div></div>
+</div>
+
+<!-- ===== INVENTARIO UNIFICADO ===== -->
+<div class="panel" id="panel-inventario">
+  <div class="card">
+    <h2>Inventario completo</h2>
+    <div class="filter-bar">
+      <input type="text" id="inv_search" placeholder="Buscar nombre o SKU…" style="min-width:180px;">
+      <select id="inv_cat"><option value="">Todas las categorías</option><option value="brasil">Brasil</option><option value="plata">Plata</option><option value="china">China</option></select>
+      <select id="inv_tipo"><option value="">Todos los tipos</option><option>Anillo</option><option>Collar</option><option>Pulsera</option><option>Aros</option><option>Cadena</option><option>Dije</option><option>Otro</option></select>
+      <select id="inv_estado"><option value="">Todos los estados</option><option value="activo">Activo</option><option value="bajo">Bajo stock</option><option value="agotado">Agotado</option></select>
+    </div>
+    <div class="table-scroll"><table id="t_inventario_unif">
+      <thead><tr><th class="left">Estado</th><th class="left">SKU</th><th class="left">Nombre</th><th class="left">Categoría</th><th class="left">Tipo</th><th>Stock</th><th class="calc-col">Costo</th><th class="calc-col">Minorista</th><th class="calc-col">Precio Final</th></tr></thead>
+      <tbody id="tbody_inventario_unif"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ===== CATÁLOGO ===== -->
+<div class="panel" id="panel-catalogo">
+  <div class="card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+      <div>
+        <h2>Catálogo de productos</h2>
+        <p style="margin:3px 0 0;color:var(--ink-soft);font-size:12px;">Haz clic en "Ver" para editar la foto de cada pieza desde el detalle.</p>
+      </div>
+      <button class="btn-green" onclick="exportCatalogo()" style="display:inline-flex;align-items:center;gap:7px;padding:10px 16px;font-size:13px;border-radius:8px;cursor:pointer;">
+        🔗 Exportar catálogo para compartir
+      </button>
+    </div>
+    <div class="cat-filters">
+      <input type="text" id="cat_search" placeholder="Buscar nombre o SKU…" style="min-width:180px;">
+      <select id="cat_cat"><option value="">Todas las categorías</option><option value="brasil">Brasil</option><option value="plata">Plata</option><option value="china">China</option></select>
+      <select id="cat_tipo"><option value="">Todos los tipos</option><option>Anillo</option><option>Collar</option><option>Pulsera</option><option>Aros</option><option>Cadena</option><option>Dije</option><option>Otro</option></select>
+      <select id="cat_stock"><option value="">Todo el stock</option><option value="disp">Disponible</option><option value="bajo">Bajo stock</option><option value="agot">Agotado</option></select>
+    </div>
+    <div class="catalog-grid" id="catalog-grid"></div>
+  </div>
+</div>
+
+<!-- ===== VENTAS ===== -->
+<div class="panel" id="panel-ventas">
+  <div class="add-card ventas">
+    <h2><span class="icon">$</span>Registrar venta</h2>
+    <div class="desc">Elige cliente existente o crea uno nuevo. Indica cuánto pagó inicialmente; el saldo queda como deuda.</div>
+    <div class="fsl">Cliente</div>
+    <div class="form-grid">
+      <div class="field span2"><label>Nombre del cliente</label><input type="text" id="vf_cliente" list="dl_clientes" placeholder="Busca o escribe un nombre nuevo…"><datalist id="dl_clientes"></datalist></div>
+      <div class="field"><label>Teléfono</label><input type="text" id="vf_telefono" placeholder="+569…"></div>
+      <div class="field"><label>Correo</label><input type="text" id="vf_correo" placeholder="email@..."></div>
+      <div class="field"><label>Instagram</label><input type="text" id="vf_instagram" placeholder="@usuario"></div>
+    </div>
+    <div id="vf_cliente_nuevo_aviso" style="display:none;" class="saldo-bar warn" style="margin-bottom:0;">
+      ⚠ Cliente no encontrado. Al agregar la venta se creará automáticamente.
+    </div>
+    <div class="fsl">Producto y pago</div>
+    <div class="form-grid">
+      <div class="field"><label>Fecha</label><input type="date" id="vf_fecha"></div>
+      <div class="field span2"><label>Producto (SKU o nombre)</label><input type="text" id="vf_producto" list="dl_productos" placeholder="Escribe SKU o nombre…"><datalist id="dl_productos"></datalist></div>
+      <div class="field"><label>Categoría</label><div class="readout" id="vf_categoria">—</div></div>
+      <div class="field"><label>Stock disponible</label><div class="readout" id="vf_stockdisp">—</div></div>
+      <div class="field"><label>Cantidad</label><input type="number" id="vf_cantidad" value="1" min="1"></div>
+      <div class="field"><label>Precio unitario (CLP)</label><input type="number" id="vf_preciounit" value="0" step="1"></div>
+      <div class="field"><label>Total venta</label><div class="readout" id="vf_total">$0</div></div>
+      <div class="field"><label>Monto pagado inicial</label><input type="number" id="vf_pagado" value="0" step="1" placeholder="0 = queda como deuda"></div>
+      <div class="field"><label>Saldo pendiente</label><div class="readout" id="vf_saldo">$0</div></div>
+      <div class="field"><label>Estado de pago</label><div class="readout" id="vf_estadopago">—</div></div>
+      <div class="field"><label>Canal de venta</label><select id="vf_canal"><option>Instagram</option><option>WhatsApp</option><option>Shopify</option><option>Presencial</option><option>Otro</option></select></div>
+      <div class="field"><label>Medio de pago</label><select id="vf_pago"><option>Efectivo</option><option>Transferencia</option><option>Redcompra</option><option>Crédito</option><option>Débito</option><option>Otro</option></select></div>
+      <div class="field span2"><label>Observación</label><input type="text" id="vf_obs" placeholder="Notas de la venta…"></div>
+    </div>
+    <div class="aca">
+      <span class="hint">El stock se descuenta automáticamente al registrar.</span>
+      <div style="display:flex;gap:8px;"><button class="btn btn-ghost" id="vf_clear">Limpiar</button><button class="btn btn-primary" id="vf_submit">+ Registrar venta</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Historial de ventas</h2>
+    <div class="filter-bar">
+      <input type="text" id="ventas_search" placeholder="Buscar cliente o SKU…" style="min-width:160px;">
+      <select id="ventas_estado"><option value="">Todos los estados</option><option value="pagada">Pagada</option><option value="abonada">Abonada</option><option value="pendiente">Pendiente</option></select>
+    </div>
+    <div class="table-scroll"><table id="t_ventas">
+      <thead><tr><th class="left">Fecha</th><th class="left">ID</th><th class="left">Producto</th><th class="left">Cliente</th><th>Cant.</th><th>Total</th><th>Pagado</th><th>Saldo</th><th class="left">Canal</th><th class="left">Estado</th><th class="left">Acciones</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+  <div class="card"><h2>Resumen ventas</h2><div class="summary" id="sum_ventas"></div></div>
+</div>
+
+<!-- ===== ABONOS ===== -->
+<div class="panel" id="panel-abonos">
+  <div class="add-card abonos">
+    <h2><span class="icon">↩</span>Registrar abono</h2>
+    <div class="desc">Busca el cliente, selecciona una venta con deuda y registra el pago.</div>
+    <div class="fsl">Selección</div>
+    <div class="form-grid">
+      <div class="field span2"><label>Cliente</label><input type="text" id="af_cliente" list="dl_clientes_ab" placeholder="Nombre del cliente…"><datalist id="dl_clientes_ab"></datalist></div>
+      <div class="field span2"><label>Venta con deuda</label><select id="af_venta"><option value="">— Elige cliente primero —</option></select></div>
+      <div class="field"><label>Total venta</label><div class="readout" id="af_total">—</div></div>
+      <div class="field"><label>Saldo actual</label><div class="readout" id="af_saldo_actual">—</div></div>
+    </div>
+    <div class="fsl">Abono</div>
+    <div class="form-grid">
+      <div class="field"><label>Fecha</label><input type="date" id="af_fecha"></div>
+      <div class="field"><label>Monto del abono</label><input type="number" id="af_monto" value="0" step="1"></div>
+      <div class="field"><label>Saldo tras abono</label><div class="readout" id="af_saldo_nuevo">—</div></div>
+      <div class="field"><label>Medio de pago</label><select id="af_pago"><option>Efectivo</option><option>Transferencia</option><option>Redcompra</option><option>Crédito</option><option>Débito</option><option>Otro</option></select></div>
+      <div class="field span2"><label>Observación</label><input type="text" id="af_obs" placeholder="Notas del abono…"></div>
+    </div>
+    <div class="aca">
+      <span class="hint">El saldo de la venta y del cliente se actualizan automáticamente.</span>
+      <div style="display:flex;gap:8px;"><button class="btn btn-ghost" id="af_clear">Limpiar</button><button class="btn btn-primary" id="af_submit">+ Registrar abono</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Historial de abonos</h2>
+    <div class="table-scroll"><table id="t_abonos">
+      <thead><tr><th class="left">Fecha</th><th class="left">Cliente</th><th class="left">Venta</th><th class="left">Producto</th><th>Monto</th><th class="left">Medio</th><th>Saldo antes</th><th>Saldo después</th><th class="left">Estado</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ===== CLIENTES ===== -->
+<div class="panel" id="panel-clientes">
+  <div class="add-card clientes-form">
+    <h2><span class="icon">👤</span>Nuevo cliente</h2>
+    <div class="form-grid">
+      <div class="field"><label>Nombre *</label><input type="text" id="clf_nombre" placeholder="Nombre del cliente"></div>
+      <div class="field"><label>Teléfono</label><input type="text" id="clf_telefono" placeholder="+569…"></div>
+      <div class="field"><label>Correo</label><input type="text" id="clf_correo" placeholder="email@..."></div>
+      <div class="field"><label>Instagram</label><input type="text" id="clf_instagram" placeholder="@usuario"></div>
+      <div class="field span2"><label>Observaciones</label><input type="text" id="clf_obs" placeholder="Notas internas…"></div>
+    </div>
+    <div class="aca">
+      <span class="id-preview">Próximo ID: <b id="clf_idpreview">CLI-0001</b></span>
+      <div style="display:flex;gap:8px;"><button class="btn btn-ghost" id="clf_clear">Limpiar</button><button class="btn btn-primary" id="clf_submit">+ Crear cliente</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Clientes y deudas</h2>
+    <div class="filter-bar">
+      <input type="text" id="cli_search" placeholder="Buscar nombre, teléfono…" style="min-width:180px;">
+      <select id="cli_estado"><option value="">Todos</option><option value="deuda">Con deuda</option><option value="aldia">Al día</option></select>
+    </div>
+    <div class="table-scroll"><table id="t_clientes">
+      <thead><tr><th class="left">Estado</th><th class="left">Nombre</th><th class="left">Teléfono</th><th class="left">Correo</th><th>Compras</th><th>Pagado</th><th>Saldo</th><th>Ventas</th><th>Pendientes</th><th class="left">Última compra</th><th class="left">Acciones</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ===== MOVIMIENTOS ===== -->
+<div class="panel" id="panel-movimientos">
+  <div class="card">
+    <h2>Movimientos de stock</h2>
+    <div class="table-scroll"><table id="t_movimientos">
+      <thead><tr><th class="left">Fecha</th><th class="left">Tipo</th><th class="left">SKU</th><th class="left">Producto</th><th>Cantidad</th><th>Stock antes</th><th>Stock después</th><th class="left">Observación</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+  <div class="card">
+    <h2>Movimientos financieros</h2>
+    <div class="table-scroll"><table id="t_mov_fin">
+      <thead><tr><th class="left">Fecha</th><th class="left">Tipo</th><th class="left">Venta</th><th class="left">Cliente</th><th>Monto</th><th>Saldo antes</th><th>Saldo después</th><th class="left">Observación</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ===== DASHBOARD ===== -->
+<div class="panel" id="panel-dashboard">
+  <div class="card"><h2>Resumen del negocio</h2><div class="summary" id="sum_dashboard"></div></div>
+  <div class="card"><h2>Alertas</h2><div class="alert-list" id="alert_list"></div></div>
+</div>
+
+<!-- ===== CONFIGURACIÓN ===== -->
+<div class="panel" id="panel-configuracion">
+  <div class="card">
+    <h2>Configuración del negocio</h2>
+    <div class="config-section">
+      <h3>Datos del negocio</h3>
+      <div class="form-grid">
+        <div class="field"><label>Nombre del negocio</label><input type="text" id="cfg_nombre" placeholder="Punto Brassil"></div>
+        <div class="field"><label>Teléfono WhatsApp</label><input type="text" id="cfg_telefono" placeholder="+56912345678"></div>
+        <div class="field"><label>Correo</label><input type="text" id="cfg_correo" placeholder="contacto@..."></div>
+        <div class="field"><label>Instagram</label><input type="text" id="cfg_instagram" placeholder="@puntobrass..."></div>
+      </div>
+    </div>
+    <div class="config-section">
+      <h3>Mensajes de WhatsApp y correo</h3>
+      <div class="vars-hint">Variables disponibles: {cliente} {saldo} {negocio} {telefono_negocio} {correo_negocio} {instagram} {producto} {precio} {sku} {detalle_deuda} {firma}</div>
+      <br>
+      <div class="field"><label>Mensaje de cobranza</label><textarea id="cfg_msgcobranza">Hola {cliente}, ¿cómo estás? Te escribo de {negocio} para recordarte que tienes un saldo pendiente de {saldo}. Cualquier duda puedes responderme aquí. Muchas gracias 🙏{firma}</textarea></div>
+      <br>
+      <div class="field"><label>Mensaje de oferta</label><textarea id="cfg_msgoferta">Hola {cliente} 👋 Te escribo de {negocio} para contarte que tenemos novedades en nuestra colección. ¡Me encantaría mostrártelas! Escríbeme cuando quieras 💛{firma}</textarea></div>
+      <br>
+      <div class="field"><label>Mensaje para compartir producto</label><textarea id="cfg_msgproducto">Hola, te comparto este producto de {negocio}:
+
+✨ {producto}
+💰 Precio: {precio}
+🔖 Código: {sku}
+
+Si te interesa, escríbeme 📩{firma}</textarea></div>
+      <br>
+      <div class="field"><label>Firma (se agrega al final de cada mensaje)</label><input type="text" id="cfg_firma" placeholder="— Punto Brassil | @puntobrass..."></div>
+    </div>
+    <div style="text-align:right;margin-top:14px;">
+      <button class="btn btn-ghost" onclick="saveConfig()" style="background:var(--good);color:#fff;border-color:transparent;">Guardar configuración</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Parámetros de cálculo</h2>
+    <div class="desc">Los parámetros de Brasil, Plata y China se editan en sus respectivas pestañas arriba.</div>
+  </div>
+</div>
+
+<footer class="note">
+  <strong>Firebase:</strong> Pega tu configuración en el bloque <code>firebaseConfig</code> al inicio del script (busca "PEGA_AQUI"). Mientras tanto, todo funciona en modo local y puedes usar el respaldo JSON.
+  <strong>Cálculos:</strong> Brasil — reales a CLP con aduana y doble margen. Plata Chile — margen minorista sobre costo CLP. China — valor CL + aduana + doble margen.
+</footer>
+</div><!-- end .wrap -->
+
+<!-- MODAL DETALLE CLIENTE -->
+<div class="modal-overlay" id="modal-cliente">
+  <div class="modal-box">
+    <button class="modal-close" id="modal-cliente-close">✕</button>
+    <h2 id="modal-cliente-titulo">Detalle del cliente</h2>
+    <div id="modal-cliente-body"></div>
+  </div>
+</div>
+
+<!-- MODAL DETALLE PRODUCTO -->
+<div class="modal-overlay" id="modal-producto">
+  <div class="modal-box">
+    <button class="modal-close" id="modal-producto-close">✕</button>
+    <h2 id="modal-producto-titulo">Detalle del producto</h2>
+    <div id="modal-producto-body"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================================
+   FIREBASE CONFIG — Pega aquí tus credenciales
+   ========================================================================= */
+const firebaseConfig = {
+   apiKey: "AIzaSyC7N_9wyITmuiizWtWM2G5As3ve7zoB1Gc",
+  authDomain: "inventario-punto-brasil.firebaseapp.com",
+  projectId: "inventario-punto-brasil",
+  storageBucket: "inventario-punto-brasil.firebasestorage.app",
+  messagingSenderId: "351206549103",
+  appId: "1:351206549103:web:8d607079a1cebf6a394f9a"
+};
+/* Estructura Firestore:
+   /config/parametros  /config/negocio
+   /inventario/{sku}   /clientes/{clienteId}
+   /ventas/{ventaId}   /abonos/{abonoId}
+   /movimientos_stock/{id}  /movimientos_financieros/{id}
+*/
+let db = null, fbReady = false;
+
+function initFirebase(){
+  const banner=$('fbBanner'), text=$('fbBannerText');
+  if(!firebaseConfig.apiKey||firebaseConfig.apiKey.startsWith('PEGA_AQUI')){
+    banner.className='fb-banner local'; text.textContent='Modo local (Firebase no configurado)'; return;
+  }
+  try{
+    firebase.initializeApp(firebaseConfig); db=firebase.firestore(); fbReady=true;
+    banner.className='fb-banner ok'; text.textContent='Conectado a Firebase';
+    loadFromFirebase();
+  }catch(e){ console.error(e); banner.className='fb-banner error'; text.textContent='Error Firebase'; }
+}
+
+async function loadFromFirebase(){
+  try{
+    const pDoc=await db.collection('config').doc('parametros').get();
+    if(pDoc.exists) applyParamsObject(pDoc.data());
+    const nDoc=await db.collection('config').doc('negocio').get();
+    if(nDoc.exists) applyNegocioConfig(nDoc.data());
+    const [iSnap,cSnap,vSnap,aSnap,mSnap,mfSnap]=await Promise.all([
+      db.collection('inventario').get(),db.collection('clientes').get(),
+      db.collection('ventas').get(),db.collection('abonos').get(),
+      db.collection('movimientos_stock').get(),db.collection('movimientos_financieros').get()
+    ]);
+    if(!iSnap.empty) inventory=iSnap.docs.map(d=>d.data());
+    if(!cSnap.empty) clientes=cSnap.docs.map(d=>d.data());
+    if(!vSnap.empty) ventas=vSnap.docs.map(d=>d.data());
+    if(!aSnap.empty) abonos=aSnap.docs.map(d=>d.data());
+    if(!mSnap.empty) movimientos=mSnap.docs.map(d=>d.data());
+    if(!mfSnap.empty) movimientosFinancieros=mfSnap.docs.map(d=>d.data());
+    recalcAllItems(); renderAll();
+    showToast('Datos cargados desde Firebase');
+  }catch(e){ console.error(e); showToast('Error cargando de Firebase'); }
+}
+
+const fbSave={
+  item:(i)=>{ if(fbReady) db.collection('inventario').doc(i.sku).set(i).catch(e=>console.error(e)); },
+  cliente:(c)=>{ if(fbReady) db.collection('clientes').doc(c.id).set(c).catch(e=>console.error(e)); },
+  venta:(v)=>{ if(fbReady) db.collection('ventas').doc(v.id).set(v).catch(e=>console.error(e)); },
+  abono:(a)=>{ if(fbReady) db.collection('abonos').doc(a.id).set(a).catch(e=>console.error(e)); },
+  movStock:(m)=>{ if(fbReady) db.collection('movimientos_stock').doc(m.id).set(m).catch(e=>console.error(e)); },
+  movFin:(m)=>{ if(fbReady) db.collection('movimientos_financieros').doc(m.id).set(m).catch(e=>console.error(e)); },
+  params:()=>{ if(fbReady) db.collection('config').doc('parametros').set(getParamsObject()).catch(e=>console.error(e)); },
+  negocio:()=>{ if(fbReady) db.collection('config').doc('negocio').set(negocioConfig).catch(e=>console.error(e)); }
+};
+const saveTimers={};
+function scheduleSave(item){ clearTimeout(saveTimers[item.sku]); saveTimers[item.sku]=setTimeout(()=>fbSave.item(item),600); }
+
+/* =========== ESTADO GLOBAL =========== */
+let inventory=[], ventas=[], clientes=[], abonos=[], movimientos=[], movimientosFinancieros=[];
+let negocioConfig={nombre:'Punto Brassil',telefono:'',correo:'',instagram:'',msgCobranza:'Hola {cliente}, ¿cómo estás? Te escribo de {negocio} para recordarte que tienes un saldo pendiente de {saldo}. Cualquier duda puedes responderme aquí. Muchas gracias 🙏{firma}',msgOferta:'Hola {cliente} 👋 Te escribo de {negocio} para contarte que tenemos novedades. Escríbeme cuando quieras 💛{firma}',msgProducto:'Hola, te comparto este producto de {negocio}:\n✨ {producto}\n💰 Precio: {precio}\n🔖 Código: {sku}\nSi te interesa, escríbeme 📩{firma}',firma:''};
+
+/* =========== UTILIDADES =========== */
+const fmt=n=>isFinite(n)?n.toLocaleString('es-CL',{maximumFractionDigits:0}):'—';
+const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
+const pct=id=>num(document.getElementById(id).value)/100;
+const $=id=>document.getElementById(id);
+const nowISO=()=>new Date().toISOString();
+const todayStr=()=>new Date().toISOString().slice(0,10);
+function showToast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(showToast._tm);showToast._tm=setTimeout(()=>t.classList.remove('show'),2400);}
+
+const TIPO_CODE={'Anillo':'AN','Collar':'CO','Pulsera':'PU','Aros':'AR','Cadena':'CA','Dije':'DI','Otro':'OT'};
+const CAT_CODE={brasil:'BR',plata:'PL',china:'CH'};
+const CAT_LABEL={brasil:'Brasil',plata:'Plata Chile',china:'China'};
+const TABLE_ID={brasil:'t_brasil',plata:'t_plata',china:'t_china'};
+
+function nextId(cat,tipo){
+  const p=`${TIPO_CODE[tipo]||'OT'}-${CAT_CODE[cat]}-`;
+  let max=0;
+  inventory.filter(i=>!i.sku.includes('empty-row')).forEach(i=>{
+    if(i.sku&&i.sku.startsWith(p)){const n=parseInt(i.sku.slice(p.length),10);if(!isNaN(n)&&n>max)max=n;}
+  });
+  return p+String(max+1).padStart(4,'0');
+}
+function nextClienteId(){
+  let max=0;
+  clientes.forEach(c=>{const n=parseInt((c.id||'').replace('CLI-',''),10);if(!isNaN(n)&&n>max)max=n;});
+  return 'CLI-'+String(max+1).padStart(4,'0');
+}
+function nextAbonoId(){
+  let max=0;
+  abonos.forEach(a=>{const n=parseInt((a.id||'').replace('AB-',''),10);if(!isNaN(n)&&n>max)max=n;});
+  return 'AB-'+String(max+1).padStart(4,'0');
+}
+
+/* =========== TABS =========== */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    $('panel-'+btn.dataset.tab).classList.add('active');
+    const t=btn.dataset.tab;
+    if(t==='dashboard')renderDashboard();
+    if(t==='ventas'){refreshProductDatalist();refreshClienteDatalist('dl_clientes');}
+    if(t==='abonos'){refreshClienteDatalist('dl_clientes_ab');}
+    if(t==='clientes')renderClientesTable();
+    if(t==='inventario')renderInventarioUnificado();
+    if(t==='catalogo')renderCatalogo();
+    if(t==='configuracion')applyNegocioConfig(negocioConfig);
+  });
+});
+
+/* =========== CALC ITEMS =========== */
+function recalcItem(item){
+  if(item.categoria==='brasil'){
+    const tc=num($('b_tc').value),aduana=pct('b_aduana'),m1=pct('b_m1'),m2=pct('b_m2'),
+          iva=pct('b_iva'),viaje=pct('b_viaje'),red=pct('b_red'),shopify=pct('b_shopify');
+    const L=(item.mo+item.grosor)*item.grm/1000*item.peso+(item.bano/1000)*item.peso+item.bruto;
+    const N=L*tc,O=N*aduana,P=N+O;
+    const R=m1<1?P/(1-m1):0,S=R*(1+iva);
+    const U=m2<1?R/(1-m2):0,V=U*(1+iva);
+    const X=P*viaje,Y=V*red,Z=V*shopify;
+    item.costo=P;item.mayorista=S;item.minorista=V;item.final=V+X+Y+Z;
+  }else if(item.categoria==='plata'){
+    const m2=pct('p_m2'),iva=pct('p_iva'),viaje=pct('p_viaje'),red=pct('p_red'),shopify=pct('p_shopify');
+    const I=m2<1?item.costoBase/(1-m2):0,J=I*(1+iva);
+    const L=item.costoBase*viaje,M=J*red,N=J*shopify;
+    item.costo=item.costoBase;item.mayorista=null;item.minorista=J;item.final=J+L+M+N;
+  }else if(item.categoria==='china'){
+    const aduana=pct('c_aduana'),m1=pct('c_m1'),m2=pct('c_m2'),iva=pct('c_iva'),viaje=pct('c_viaje'),red=pct('c_red'),shopify=pct('c_shopify');
+    const H=item.valorcl*aduana,I=item.valorcl+H;
+    const K=m1<1?I/(1-m1):0,L=K*(1+iva);
+    const N=m2<1?K/(1-m2):0,O=N*(1+iva);
+    const Q=I*viaje,R_=O*red,S=O*shopify;
+    item.costo=I;item.mayorista=L;item.minorista=O;item.final=O+Q+R_+S;
+  }
+  if(item.estado!=='eliminado') item.estado=item.stock<=0?'agotado':'activo';
+}
+function recalcAllItems(){inventory.forEach(recalcItem);}
+
+/* =========== ESTADOBADGE =========== */
+function estadoBadge(item){
+  if(item.estado==='eliminado')return`<span class="badge badge-eliminado">Eliminado</span>`;
+  if(item.stock<=0)return`<span class="badge badge-agotado">Agotado</span>`;
+  if(item.stock<=2)return`<span class="badge badge-bajo">Stock bajo</span>`;
+  return`<span class="badge badge-activo">Activo</span>`;
+}
+function estadoPagoBadge(ep){
+  if(ep==='pagada')return`<span class="badge badge-pagada">Pagada</span>`;
+  if(ep==='pendiente')return`<span class="badge badge-pendiente">Pendiente</span>`;
+  return`<span class="badge badge-abonada">Abonada</span>`;
+}
+function calcEstadoPago(pagado,total){
+  if(pagado>=total)return'pagada';
+  if(pagado<=0)return'pendiente';
+  return'abonada';
+}
+
+function tipoSelectHtml(sel){
+  return`<select data-field="tipo">${Object.keys(TIPO_CODE).map(t=>`<option${t===sel?' selected':''}>${t}</option>`).join('')}</select>`;
+}
+
+/* =========== RENDER TABLAS POR CATEGORÍA =========== */
+function renderCategoryTable(cat){
+  const tbody=document.querySelector(`#${TABLE_ID[cat]} tbody`);
+  tbody.innerHTML='';
+  const items=inventory.filter(i=>i.categoria===cat&&i.estado!=='eliminado');
+  if(!items.length){
+    const cols=cat==='brasil'?16:cat==='china'?12:10;
+    tbody.innerHTML=`<tr class="empty-row"><td colspan="${cols}">Usa el formulario de arriba para agregar piezas.</td></tr>`;
+  }else{
+    items.forEach(item=>{
+      const tr=document.createElement('tr');tr.dataset.sku=item.sku;
+      if(cat==='brasil') tr.innerHTML=rowBrasil(item);
+      else if(cat==='plata') tr.innerHTML=rowPlata(item);
+      else tr.innerHTML=rowChina(item);
+      attachRowEvents(tr,item,cat);tbody.appendChild(tr);
+    });
+  }
+  renderCatSummary(cat);
+}
+function rowBrasil(i){return`<td class="left">${estadoBadge(i)}</td><td class="left"><input type="text" class="id-input" data-field="sku" value="${i.sku}"></td><td class="left"><input type="text" data-field="nombre" value="${i.nombre||''}"></td><td class="left"><input type="text" data-field="proveedor" value="${i.proveedor||''}"></td><td class="left">${tipoSelectHtml(i.tipo)}</td><td><input type="number" data-field="stock" value="${i.stock}" min="0"></td><td><input type="number" data-field="grm" value="${i.grm}" step="0.01"></td><td><input type="number" data-field="mo" value="${i.mo}" step="0.01"></td><td><input type="number" data-field="bano" value="${i.bano}" step="0.01"></td><td><input type="number" data-field="grosor" value="${i.grosor}" step="0.01"></td><td><input type="number" data-field="peso" value="${i.peso}" step="0.01"></td><td><input type="number" data-field="bruto" value="${i.bruto}" step="0.01"></td><td class="calc strong" data-o="costo">$${fmt(i.costo)}</td><td class="calc" data-o="mayorista">$${fmt(i.mayorista)}</td><td class="calc" data-o="minorista">$${fmt(i.minorista)}</td><td class="calc final" data-o="final">$${fmt(i.final)}</td><td class="rm"><button title="Eliminar">✕</button></td>`;}
+function rowPlata(i){return`<td class="left">${estadoBadge(i)}</td><td class="left"><input type="text" class="id-input" data-field="sku" value="${i.sku}"></td><td class="left"><input type="text" data-field="nombre" value="${i.nombre||''}"></td><td class="left"><input type="text" data-field="proveedor" value="${i.proveedor||''}"></td><td class="left">${tipoSelectHtml(i.tipo)}</td><td><input type="number" data-field="stock" value="${i.stock}" min="0"></td><td><input type="number" data-field="costoBase" value="${i.costoBase||0}" step="1"></td><td class="calc strong" data-o="minorista">$${fmt(i.minorista)}</td><td class="calc final" data-o="final">$${fmt(i.final)}</td><td class="rm"><button title="Eliminar">✕</button></td>`;}
+function rowChina(i){return`<td class="left">${estadoBadge(i)}</td><td class="left"><input type="text" class="id-input" data-field="sku" value="${i.sku}"></td><td class="left"><input type="text" data-field="nombre" value="${i.nombre||''}"></td><td class="left"><input type="text" data-field="proveedor" value="${i.proveedor||''}"></td><td class="left">${tipoSelectHtml(i.tipo)}</td><td><input type="number" data-field="stock" value="${i.stock}" min="0"></td><td><input type="number" data-field="valorcl" value="${i.valorcl||0}" step="1"></td><td class="calc strong" data-o="costo">$${fmt(i.costo)}</td><td class="calc" data-o="mayorista">$${fmt(i.mayorista)}</td><td class="calc" data-o="minorista">$${fmt(i.minorista)}</td><td class="calc final" data-o="final">$${fmt(i.final)}</td><td class="rm"><button title="Eliminar">✕</button></td>`;}
+
+function attachRowEvents(tr,item,cat){
+  tr.querySelectorAll('[data-field]').forEach(inp=>{
+    if(inp.dataset.field==='sku'){
+      inp.addEventListener('change',()=>{
+        const ns=inp.value.trim();if(!ns||ns===item.sku){inp.value=item.sku;return;}
+        if(inventory.some(i=>i.sku===ns)){showToast('Ese ID ya existe');inp.value=item.sku;return;}
+        const os=item.sku;if(fbReady)db.collection('inventario').doc(os).delete().catch(()=>{});
+        item.sku=ns;tr.dataset.sku=ns;scheduleSave(item);showToast(`ID: ${os}→${ns}`);
+      });return;
+    }
+    inp.addEventListener('input',()=>{
+      const f=inp.dataset.field;
+      if(f==='stock'){const os=item.stock,ns=num(inp.value);item.stock=ns;logMovStock('edicion_manual_stock',item,ns-os,os,ns,'Edición manual de stock');}
+      else if(['nombre','proveedor','tipo','fotoUrl'].includes(f)) item[f]=inp.value;
+      else item[f]=num(inp.value);
+      item.fechaMod=nowISO();recalcItem(item);updateRowCalc(tr,item);scheduleSave(item);renderCatSummary(cat);
+    });
+  });
+  tr.querySelector('.rm button').addEventListener('click',()=>deleteItem(item,cat));
+}
+function updateRowCalc(tr,item){
+  tr.querySelectorAll('.calc').forEach(td=>{const k=td.dataset.o;if(k)td.textContent='$'+fmt(item[k]);});
+  tr.children[0].innerHTML=estadoBadge(item);
+}
+function renderCatSummary(cat){
+  const items=inventory.filter(i=>i.categoria===cat&&i.estado!=='eliminado');
+  let st=0,co=0,fi=0,n=0;
+  items.forEach(i=>{if(i.costo>0){st+=i.stock;co+=i.costo*i.stock;fi+=i.final*i.stock;n++;}});
+  $('sum_'+cat).innerHTML=`<div class="stat"><div class="label">Piezas</div><div class="value">${n}</div></div><div class="stat"><div class="label">Stock total</div><div class="value">${fmt(st)}</div></div><div class="stat"><div class="label">Inversión</div><div class="value">$${fmt(co)}</div></div><div class="stat accent"><div class="label">Valor de venta</div><div class="value">$${fmt(fi)}</div></div>`;
+}
+function recalcAndRenderCat(cat){inventory.filter(i=>i.categoria===cat).forEach(recalcItem);renderCategoryTable(cat);}
+document.querySelectorAll('.params input').forEach(inp=>inp.addEventListener('input',()=>{
+  recalcAndRenderCat('brasil');recalcAndRenderCat('plata');recalcAndRenderCat('china');
+  fbSave.params();renderInventarioUnificado();renderCatalogo();
+}));
+
+/* =========== ALTA DE PIEZAS =========== */
+function pushItem(item){
+  inventory.push(item);logMovStock('entrada',item,item.stock,0,item.stock,'Alta de pieza');
+  recalcItem(item);fbSave.item(item);renderCategoryTable(item.categoria);refreshProductDatalist();renderCatalogo();
+}
+function deleteItem(item,cat){
+  if(!confirm(`¿Desactivar "${item.nombre||item.sku}"? El historial se conserva.`))return;
+  const os=item.stock;item.estado='eliminado';item.fechaMod=nowISO();
+  logMovStock('eliminacion',item,-os,os,item.stock,'Desactivación de producto');
+  fbSave.item(item);renderCategoryTable(cat);renderInventarioUnificado();renderCatalogo();showToast(`Desactivado: ${item.sku}`);
+}
+
+function clearFormBrasil(){['bf_nombre','bf_proveedor','bf_foto'].forEach(id=>$(id).value='');$('bf_tipo').value='Anillo';$('bf_stock').value=1;$('bf_grm').value=720;$('bf_mo').value=3.5;$('bf_bano').value=350;$('bf_grosor').value=3;$('bf_peso').value=0;$('bf_bruto').value=0;$('bf_foto_prev').innerHTML='💍';if($('bf_foto_file'))$('bf_foto_file').value='';$('bf_nombre').focus();updateIdPrev('brasil','bf_tipo','bf_idpreview');}
+$('bf_clear').addEventListener('click',clearFormBrasil);
+$('bf_tipo').addEventListener('change',()=>updateIdPrev('brasil','bf_tipo','bf_idpreview'));
+$('bf_submit').addEventListener('click',()=>{
+  const tipo=$('bf_tipo').value;
+  pushItem({sku:nextId('brasil',tipo),categoria:'brasil',tipo,nombre:$('bf_nombre').value.trim(),proveedor:$('bf_proveedor').value.trim(),fotoUrl:$('bf_foto').value.trim(),stock:num($('bf_stock').value),grm:num($('bf_grm').value),mo:num($('bf_mo').value),bano:num($('bf_bano').value),grosor:num($('bf_grosor').value),peso:num($('bf_peso').value),bruto:num($('bf_bruto').value),fechaCreacion:nowISO(),fechaMod:nowISO(),estado:'activo'});
+  showToast('Pieza agregada');clearFormBrasil();
+});
+
+function clearFormPlata(){['pf_nombre','pf_proveedor','pf_foto'].forEach(id=>$(id).value='');$('pf_tipo').value='Anillo';$('pf_stock').value=1;$('pf_costo').value=0;$('pf_foto_prev').innerHTML='💍';if($('pf_foto_file'))$('pf_foto_file').value='';$('pf_nombre').focus();updateIdPrev('plata','pf_tipo','pf_idpreview');}
+$('pf_clear').addEventListener('click',clearFormPlata);
+$('pf_tipo').addEventListener('change',()=>updateIdPrev('plata','pf_tipo','pf_idpreview'));
+$('pf_submit').addEventListener('click',()=>{
+  const tipo=$('pf_tipo').value;
+  pushItem({sku:nextId('plata',tipo),categoria:'plata',tipo,nombre:$('pf_nombre').value.trim(),proveedor:$('pf_proveedor').value.trim(),fotoUrl:$('pf_foto').value.trim(),stock:num($('pf_stock').value),costoBase:num($('pf_costo').value),fechaCreacion:nowISO(),fechaMod:nowISO(),estado:'activo'});
+  showToast('Pieza agregada');clearFormPlata();
+});
+
+function clearFormChina(){['cf_nombre','cf_proveedor','cf_foto'].forEach(id=>$(id).value='');$('cf_tipo').value='Anillo';$('cf_stock').value=1;$('cf_valorcl').value=0;$('cf_foto_prev').innerHTML='💍';if($('cf_foto_file'))$('cf_foto_file').value='';$('cf_nombre').focus();updateIdPrev('china','cf_tipo','cf_idpreview');}
+$('cf_clear').addEventListener('click',clearFormChina);
+$('cf_tipo').addEventListener('change',()=>updateIdPrev('china','cf_tipo','cf_idpreview'));
+$('cf_submit').addEventListener('click',()=>{
+  const tipo=$('cf_tipo').value;
+  pushItem({sku:nextId('china',tipo),categoria:'china',tipo,nombre:$('cf_nombre').value.trim(),proveedor:$('cf_proveedor').value.trim(),fotoUrl:$('cf_foto').value.trim(),stock:num($('cf_stock').value),valorcl:num($('cf_valorcl').value),fechaCreacion:nowISO(),fechaMod:nowISO(),estado:'activo'});
+  showToast('Pieza agregada');clearFormChina();
+});
+
+function updateIdPrev(cat,tipoId,prevId){ $(prevId).textContent=nextId(cat,$(tipoId).value); }
+
+/* =========== INVENTARIO UNIFICADO =========== */
+function renderInventarioUnificado(){
+  const search=($('inv_search').value||'').toLowerCase();
+  const cat=$('inv_cat').value, tipo=$('inv_tipo').value, estado=$('inv_estado').value;
+  const items=inventory.filter(i=>{
+    if(i.estado==='eliminado')return false;
+    if(cat&&i.categoria!==cat)return false;
+    if(tipo&&i.tipo!==tipo)return false;
+    if(estado==='bajo'&&!(i.stock>0&&i.stock<=2))return false;
+    if(estado==='agotado'&&i.stock>0)return false;
+    if(estado==='activo'&&(i.stock<=0||i.stock<=2))return false;
+    if(search&&!((i.nombre||'').toLowerCase().includes(search))&&!i.sku.toLowerCase().includes(search))return false;
+    return true;
+  });
+  const tbody=$('tbody_inventario_unif');
+  if(!items.length){tbody.innerHTML=`<tr class="empty-row"><td colspan="9">No hay piezas con esos filtros.</td></tr>`;return;}
+  tbody.innerHTML=items.map(i=>`<tr><td class="left">${estadoBadge(i)}</td><td class="left">${i.sku}</td><td class="left">${i.nombre||'—'}</td><td class="left">${CAT_LABEL[i.categoria]}</td><td class="left">${i.tipo||'—'}</td><td>${i.stock}</td><td class="calc">$${fmt(i.costo)}</td><td class="calc">$${fmt(i.minorista)}</td><td class="calc final">$${fmt(i.final)}</td></tr>`).join('');
+}
+['inv_search','inv_cat','inv_tipo','inv_estado'].forEach(id=>$(id).addEventListener('input',renderInventarioUnificado));
+
+/* =========== CATÁLOGO =========== */
+function renderCatalogo(){
+  const search=($('cat_search').value||'').toLowerCase();
+  const cat=$('cat_cat').value, tipo=$('cat_tipo').value, stk=$('cat_stock').value;
+  const items=inventory.filter(i=>{
+    if(i.estado==='eliminado')return false;
+    if(cat&&i.categoria!==cat)return false;
+    if(tipo&&i.tipo!==tipo)return false;
+    if(stk==='disp'&&i.stock<=0)return false;
+    if(stk==='bajo'&&!(i.stock>0&&i.stock<=2))return false;
+    if(stk==='agot'&&i.stock>0)return false;
+    if(search&&!((i.nombre||'').toLowerCase().includes(search))&&!i.sku.toLowerCase().includes(search))return false;
+    return true;
+  });
+  const grid=$('catalog-grid');
+  if(!items.length){grid.innerHTML=`<div class="empty-catalog">No hay productos con esos filtros.</div>`;return;}
+  const badgeCls=i=>i.stock<=0?'badge-agotado':i.stock<=2?'badge-bajo':'badge-activo';
+  const badgeTxt=i=>i.stock<=0?'Agotado':i.stock<=2?'Stock bajo':'Disponible';
+  grid.innerHTML=items.map(i=>`
+    <div class="catalog-card">
+      <div class="foto">${i.fotoUrl?`<img src="${i.fotoUrl}" alt="${i.nombre||i.sku}" onerror="this.style.display='none'">`:''}<span style="${i.fotoUrl?'display:none':''}">💍</span></div>
+      <div class="cinfo">
+        <div class="cname">${i.nombre||'Sin nombre'}</div>
+        <div class="csku">${i.sku} · ${CAT_LABEL[i.categoria]}</div>
+        <div class="cprice">$${fmt(i.final)}</div>
+        <div class="cmeta">
+          <span class="badge ${badgeCls(i)}">${badgeTxt(i)}</span>
+          <span style="font-size:11px;color:var(--ink-faint);">Stock: ${i.stock}</span>
+        </div>
+        <div class="cbtns">
+          <button class="cbtn cbtn-detail" onclick="openProductoModal('${i.sku}')">Ver</button>
+          <button class="cbtn cbtn-wa" onclick="compartirProductoWA('${i.sku}')">WhatsApp</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+['cat_search','cat_cat','cat_tipo','cat_stock'].forEach(id=>$(id).addEventListener('input',renderCatalogo));
+
+function openProductoModal(sku){
+  const item=inventory.find(i=>i.sku===sku);if(!item)return;
+  $('modal-producto-titulo').textContent=item.nombre||item.sku;
+  $('modal-producto-body').innerHTML=`
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+      <div style="width:140px;height:140px;border-radius:8px;overflow:hidden;background:var(--gold-soft);display:flex;align-items:center;justify-content:center;font-size:40px;flex-shrink:0;">
+        ${item.fotoUrl?`<img src="${item.fotoUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`:'💍'}
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:12px;color:var(--ink-faint);margin-bottom:4px;">${item.sku} · ${CAT_LABEL[item.categoria]} · ${item.tipo||''}</div>
+        <div style="font-size:22px;font-family:Georgia,serif;font-weight:700;margin-bottom:8px;">${item.nombre||'—'}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
+          <div><span style="color:var(--ink-soft);">Proveedor:</span> ${item.proveedor||'—'}</div>
+          <div><span style="color:var(--ink-soft);">Stock:</span> ${item.stock}</div>
+          <div><span style="color:var(--ink-soft);">Costo:</span> $${fmt(item.costo)}</div>
+          <div><span style="color:var(--ink-soft);">Mayorista:</span> $${fmt(item.mayorista)}</div>
+          <div><span style="color:var(--ink-soft);">Minorista:</span> $${fmt(item.minorista)}</div>
+          <div><span style="color:var(--good);font-weight:700;">Precio final: $${fmt(item.final)}</span></div>
+        </div>
+        <div style="margin-top:12px;">
+          <label style="font-size:11px;color:var(--ink-soft);text-transform:uppercase;font-weight:700;">Foto de la pieza</label>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;">
+            <button type="button" class="btn-foto" onclick="triggerFotoModal('${sku}')">📷 Cambiar foto</button>
+            <input type="file" id="modal_foto_file_${sku}" accept="image/*" onchange="handleFotoModalUpload('${sku}',this)">
+            <input type="text" class="foto-url-input" value="${item.fotoUrl||''}" placeholder="o pega URL" onchange="updateFoto('${sku}',this.value)" style="flex:1;min-width:120px;">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="cbtn cbtn-wa" style="padding:9px 14px;border-radius:7px;font-size:13px;" onclick="compartirProductoWA('${sku}')">📱 Compartir por WhatsApp</button>
+    </div>`;
+  $('modal-producto').classList.add('open');
+}
+$('modal-producto-close').addEventListener('click',()=>$('modal-producto').classList.remove('open'));
+$('modal-producto').addEventListener('click',e=>{if(e.target===$('modal-producto'))$('modal-producto').classList.remove('open');});
+
+function updateFoto(sku,url){
+  const item=inventory.find(i=>i.sku===sku);if(!item)return;
+  item.fotoUrl=url.trim();item.fechaMod=nowISO();fbSave.item(item);renderCatalogo();showToast('Foto actualizada');
+}
+
+/* =========== CLIENTES =========== */
+function refreshClienteDatalist(dlId){
+  $(dlId).innerHTML=clientes.filter(c=>c.estado!=='eliminado').map(c=>`<option value="${c.nombre}">${c.nombre}${c.telefono?' — '+c.telefono:''}</option>`).join('');
+}
+function findCliente(nombre){
+  nombre=(nombre||'').trim().toLowerCase();
+  return clientes.find(c=>c.estado!=='eliminado'&&c.nombre.toLowerCase()===nombre)||null;
+}
+function findOrCreateCliente(nombre,telefono,correo,instagram){
+  let c=findCliente(nombre);
+  if(!c){
+    c={id:nextClienteId(),nombre:(nombre||'').trim(),telefono:(telefono||'').trim(),correo:(correo||'').trim(),instagram:(instagram||'').trim(),observaciones:'',fechaCreacion:nowISO(),estado:'activo'};
+    clientes.push(c);fbSave.cliente(c);renderClientesTable();refreshClienteDatalist('dl_clientes');refreshClienteDatalist('dl_clientes_ab');
+  }else{
+    if(telefono&&!c.telefono)c.telefono=(telefono||'').trim();
+    if(correo&&!c.correo)c.correo=(correo||'').trim();
+    if(instagram&&!c.instagram)c.instagram=(instagram||'').trim();
+    fbSave.cliente(c);
+  }
+  return c;
+}
+
+$('clf_submit').addEventListener('click',()=>{
+  const nom=$('clf_nombre').value.trim();
+  if(!nom){showToast('Escribe el nombre del cliente');return;}
+  if(findCliente(nom)){showToast('Ya existe un cliente con ese nombre');return;}
+  const c={id:nextClienteId(),nombre:nom,telefono:$('clf_telefono').value.trim(),correo:$('clf_correo').value.trim(),instagram:$('clf_instagram').value.trim(),observaciones:$('clf_obs').value.trim(),fechaCreacion:nowISO(),estado:'activo'};
+  clientes.push(c);fbSave.cliente(c);
+  renderClientesTable();refreshClienteDatalist('dl_clientes');refreshClienteDatalist('dl_clientes_ab');
+  showToast(`Cliente creado: ${c.id}`);clearFormCliente();
+});
+$('clf_clear').addEventListener('click',clearFormCliente);
+function clearFormCliente(){['clf_nombre','clf_telefono','clf_correo','clf_instagram','clf_obs'].forEach(id=>$(id).value='');$('clf_idpreview').textContent=nextClienteId();}
+
+function getClienteSummary(clienteId){
+  const vv=ventas.filter(v=>!v.anulada&&v.clienteId===clienteId);
+  const totalComprado=vv.reduce((s,v)=>s+v.total,0);
+  const saldoPendiente=vv.reduce((s,v)=>s+v.saldoPendiente,0);
+  const totalPagado=totalComprado-saldoPendiente;
+  const cantVentas=vv.length;
+  const cantPend=vv.filter(v=>v.estadoPago!=='pagada').length;
+  const ultiC=vv.sort((a,b)=>new Date(b.fecha)-new Date(a.fecha))[0]?.fecha||null;
+  const aab=abonos.filter(a=>!a.anulado&&a.clienteId===clienteId).sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  const ultiA=aab[0]?.fecha||null;
+  return{totalComprado,totalPagado,saldoPendiente,cantVentas,cantPend,ultiC,ultiA,estado:saldoPendiente>0?'deuda':'aldia'};
+}
+
+function renderClientesTable(){
+  const search=($('cli_search').value||'').toLowerCase();
+  const estFilter=$('cli_estado').value;
+  const tbody=document.querySelector('#t_clientes tbody');
+  const items=clientes.filter(c=>{
+    if(c.estado==='eliminado')return false;
+    if(search&&!(c.nombre.toLowerCase().includes(search)||(c.telefono||'').includes(search)||(c.correo||'').toLowerCase().includes(search)))return false;
+    const s=getClienteSummary(c.id);
+    if(estFilter==='deuda'&&s.estado!=='deuda')return false;
+    if(estFilter==='aldia'&&s.estado!=='aldia')return false;
+    return true;
+  });
+  if(!items.length){tbody.innerHTML=`<tr class="empty-row"><td colspan="11">No hay clientes con esos filtros.</td></tr>`;return;}
+  tbody.innerHTML=items.map(c=>{
+    const s=getClienteSummary(c.id);
+    const badgeCls=s.estado==='deuda'?'badge-deuda':'badge-aldia';
+    const badgeTxt=s.estado==='deuda'?'Con deuda':'Al día';
+    const waHref=c.telefono?`href="${waLink(c.telefono,buildMsg(negocioConfig.msgCobranza,c,null,null))}" target="_blank"`:'onclick="showToast(\'Sin teléfono\')"';
+    const mailHref=c.correo?`href="mailto:${c.correo}?subject=Cobranza ${negocioConfig.nombre}&body=${encodeURIComponent(buildMsg(negocioConfig.msgCobranza,c,null,null))}" target="_blank"`:'onclick="showToast(\'Sin correo\')"';
+    return`<tr>
+      <td class="left"><span class="badge ${badgeCls}">${badgeTxt}</span></td>
+      <td class="left"><strong>${c.nombre}</strong></td>
+      <td class="left">${c.telefono||'—'}</td>
+      <td class="left">${c.correo||'—'}</td>
+      <td>$${fmt(s.totalComprado)}</td>
+      <td>$${fmt(s.totalPagado)}</td>
+      <td style="color:${s.saldoPendiente>0?'var(--danger)':'var(--good)'};font-weight:700;">$${fmt(s.saldoPendiente)}</td>
+      <td>${s.cantVentas}</td>
+      <td>${s.cantPend}</td>
+      <td class="left">${s.ultiC||'—'}</td>
+      <td class="left" style="display:flex;gap:4px;flex-wrap:wrap;min-width:200px;">
+        <button class="btn-sm" onclick="openClienteModal('${c.id}')">📋 Ver</button>
+        <a class="btn-sm" ${waHref} style="text-decoration:none;">💬 WA</a>
+        <a class="btn-sm" ${mailHref} style="text-decoration:none;">📧 Mail</a>
+      </td>
+    </tr>`;
+  }).join('');
+}
+['cli_search','cli_estado'].forEach(id=>$(id).addEventListener('input',renderClientesTable));
+
+function openClienteModal(id){
+  const c=clientes.find(cl=>cl.id===id);if(!c)return;
+  const s=getClienteSummary(id);
+  const vv=ventas.filter(v=>!v.anulada&&v.clienteId===id);
+  const aab=abonos.filter(a=>!a.anulado&&a.clienteId===id).sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  $('modal-cliente-titulo').textContent=`Cliente: ${c.nombre}`;
+  $('modal-cliente-body').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:13px;">
+      <div><b>ID:</b> ${c.id}</div><div><b>Estado:</b> <span class="badge ${s.estado==='deuda'?'badge-deuda':'badge-aldia'}">${s.estado==='deuda'?'Con deuda':'Al día'}</span></div>
+      <div><b>Teléfono:</b> ${c.telefono||'—'}</div><div><b>Correo:</b> ${c.correo||'—'}</div>
+      <div><b>Instagram:</b> ${c.instagram||'—'}</div><div><b>Cliente desde:</b> ${(c.fechaCreacion||'').slice(0,10)}</div>
+      <div><b>Total comprado:</b> $${fmt(s.totalComprado)}</div><div><b>Total pagado:</b> $${fmt(s.totalPagado)}</div>
+      <div style="color:${s.saldoPendiente>0?'var(--danger)':'var(--good)'};"><b>Saldo pendiente:</b> $${fmt(s.saldoPendiente)}</div>
+      <div><b>Ventas:</b> ${s.cantVentas} (${s.cantPend} pendientes)</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+      ${c.telefono?`<a class="btn-sm" href="${waLink(c.telefono,buildMsg(negocioConfig.msgCobranza,c,null,null))}" target="_blank" style="text-decoration:none;">💬 WhatsApp cobranza</a>`:''}
+      ${c.correo?`<a class="btn-sm" href="mailto:${c.correo}?subject=Deuda ${negocioConfig.nombre}&body=${encodeURIComponent(buildMsg(negocioConfig.msgCobranza,c,null,null))}" target="_blank" style="text-decoration:none;">📧 Correo cobranza</a>`:''}
+    </div>
+    <div class="modal-section"><h3>Ventas</h3>
+      <div class="table-scroll"><table style="font-size:12px;">
+        <thead><tr><th class="left">Fecha</th><th class="left">ID</th><th class="left">Producto</th><th>Total</th><th>Pagado</th><th>Saldo</th><th class="left">Estado</th></tr></thead>
+        <tbody>${vv.map(v=>`<tr><td class="left">${v.fecha}</td><td class="left">${v.id.slice(0,12)}</td><td class="left">${v.nombre}</td><td>$${fmt(v.total)}</td><td>$${fmt(v.montoPagado)}</td><td style="color:${v.saldoPendiente>0?'var(--danger)':'var(--good)'};">$${fmt(v.saldoPendiente)}</td><td class="left">${estadoPagoBadge(v.estadoPago)}</td></tr>`).join('')||'<tr class="empty-row"><td colspan="7">Sin ventas</td></tr>'}</tbody>
+      </table></div>
+    </div>
+    <div class="modal-section"><h3>Abonos recibidos</h3>
+      <div class="table-scroll"><table style="font-size:12px;">
+        <thead><tr><th class="left">Fecha</th><th class="left">Venta</th><th>Monto</th><th class="left">Medio</th></tr></thead>
+        <tbody>${aab.map(a=>`<tr><td class="left">${a.fecha}</td><td class="left">${a.ventaId.slice(0,12)}</td><td>$${fmt(a.monto)}</td><td class="left">${a.medioPago}</td></tr>`).join('')||'<tr class="empty-row"><td colspan="4">Sin abonos</td></tr>'}</tbody>
+      </table></div>
+    </div>`;
+  $('modal-cliente').classList.add('open');
+}
+$('modal-cliente-close').addEventListener('click',()=>$('modal-cliente').classList.remove('open'));
+$('modal-cliente').addEventListener('click',e=>{if(e.target===$('modal-cliente'))$('modal-cliente').classList.remove('open');});
+
+/* =========== VENTAS =========== */
+function refreshProductDatalist(){
+  $('dl_productos').innerHTML=inventory.filter(i=>i.estado!=='eliminado'&&i.stock>0).map(i=>`<option value="${i.sku}">${i.sku} — ${i.nombre||''} (${CAT_LABEL[i.categoria]})</option>`).join('');
+}
+function findItemByInput(txt){
+  txt=(txt||'').trim();if(!txt)return null;
+  let it=inventory.find(i=>i.sku===txt&&i.estado!=='eliminado');if(it)return it;
+  const sk=txt.split('—')[0].trim();
+  it=inventory.find(i=>i.sku===sk&&i.estado!=='eliminado');if(it)return it;
+  return inventory.find(i=>i.estado!=='eliminado'&&i.nombre&&i.nombre.toLowerCase()===txt.toLowerCase())||null;
+}
+function updateVentaPreview(){
+  const item=findItemByInput($('vf_producto').value);
+  if(item){$('vf_categoria').textContent=CAT_LABEL[item.categoria];$('vf_stockdisp').textContent=fmt(item.stock);if(num($('vf_preciounit').value)===0)$('vf_preciounit').value=Math.round(item.final||0);}
+  else{$('vf_categoria').textContent='—';$('vf_stockdisp').textContent='—';}
+  updateVentaTotals();
+}
+function updateVentaTotals(){
+  const total=num($('vf_cantidad').value)*num($('vf_preciounit').value);
+  const pagado=num($('vf_pagado').value);
+  const saldo=Math.max(0,total-pagado);
+  $('vf_total').textContent='$'+fmt(total);
+  $('vf_saldo').textContent='$'+fmt(saldo);
+  const ep=calcEstadoPago(pagado,total);
+  $('vf_estadopago').innerHTML=estadoPagoBadge(ep);
+}
+function updateClienteAvisoVentas(){
+  const nom=$('vf_cliente').value.trim();
+  const existe=nom&&findCliente(nom);
+  $('vf_cliente_nuevo_aviso').style.display=nom&&!existe?'flex':'none';
+  if(existe){$('vf_telefono').value=existe.telefono||'';$('vf_correo').value=existe.correo||'';$('vf_instagram').value=existe.instagram||'';}
+}
+$('vf_producto').addEventListener('input',updateVentaPreview);
+$('vf_cantidad').addEventListener('input',updateVentaTotals);
+$('vf_preciounit').addEventListener('input',updateVentaTotals);
+$('vf_pagado').addEventListener('input',updateVentaTotals);
+$('vf_cliente').addEventListener('input',updateClienteAvisoVentas);
+if(!$('vf_fecha').value)$('vf_fecha').value=todayStr();
+
+$('vf_submit').addEventListener('click',()=>{
+  const item=findItemByInput($('vf_producto').value);
+  if(!item){showToast('Selecciona un producto válido');return;}
+  const cant=num($('vf_cantidad').value);
+  if(cant<=0){showToast('Cantidad debe ser mayor a 0');return;}
+  if(cant>item.stock){showToast(`Solo hay ${item.stock} unidades`);return;}
+  const precioUnit=num($('vf_preciounit').value);
+  const total=cant*precioUnit;
+  const montoPagado=Math.min(num($('vf_pagado').value),total);
+  const saldoPendiente=Math.max(0,total-montoPagado);
+  const estadoPago=calcEstadoPago(montoPagado,total);
+  const alertaCostoBajo=precioUnit<(item.costo||0);
+  if(alertaCostoBajo&&!confirm('El precio de venta es menor al costo calculado. ¿Registrar de todas formas?'))return;
+  const nomCliente=$('vf_cliente').value.trim();
+  const cliente=nomCliente?findOrCreateCliente(nomCliente,$('vf_telefono').value,$('vf_correo').value,$('vf_instagram').value):null;
+  const venta={
+    id:'V-'+Date.now()+'-'+Math.random().toString(36).slice(2,6),
+    fecha:$('vf_fecha').value||todayStr(),sku:item.sku,nombre:item.nombre||item.sku,categoria:item.categoria,
+    cantidad:cant,precioUnit,total,montoPagado,saldoPendiente,estadoPago,
+    utilidad:total-(item.costo||0)*cant,canal:$('vf_canal').value,medioPago:$('vf_pago').value,
+    clienteId:cliente?.id||null,clienteNombre:nomCliente||null,clienteTelefono:$('vf_telefono').value,
+    clienteCorreo:$('vf_correo').value,observacion:$('vf_obs').value.trim(),anulada:false,alertaCostoBajo
+  };
+  ventas.push(venta);fbSave.venta(venta);
+  if(montoPagado>0) logMovFin('pago_inicial',venta,montoPagado,0,montoPagado,'Pago inicial al registrar venta');
+  const os=item.stock;item.stock-=cant;item.fechaMod=nowISO();recalcItem(item);
+  logMovStock('venta',item,-cant,os,item.stock,`Venta ${venta.id}`);fbSave.item(item);
+  renderCategoryTable(item.categoria);renderVentasTable();renderClientesTable();renderDashboard();refreshProductDatalist();
+  showToast(`Venta registrada: ${venta.id}`);clearFormVenta();
+});
+$('vf_clear').addEventListener('click',clearFormVenta);
+function clearFormVenta(){
+  ['vf_cliente','vf_telefono','vf_correo','vf_instagram','vf_producto','vf_obs'].forEach(id=>$(id).value='');
+  $('vf_cantidad').value=1;$('vf_preciounit').value=0;$('vf_pagado').value=0;
+  $('vf_canal').value='Instagram';$('vf_pago').value='Efectivo';$('vf_fecha').value=todayStr();
+  $('vf_categoria').textContent='—';$('vf_stockdisp').textContent='—';$('vf_total').textContent='$0';
+  $('vf_saldo').textContent='$0';$('vf_estadopago').innerHTML='—';$('vf_cliente_nuevo_aviso').style.display='none';
+}
+
+function anularVenta(id){
+  const v=ventas.find(x=>x.id===id);if(!v||v.anulada)return;
+  if(!confirm(`¿Anular venta ${v.id}? El stock se devolverá.`))return;
+  v.anulada=true;fbSave.venta(v);
+  const item=inventory.find(i=>i.sku===v.sku);
+  if(item){const os=item.stock;item.stock+=v.cantidad;item.fechaMod=nowISO();recalcItem(item);logMovStock('venta_anulada',item,v.cantidad,os,item.stock,`Anulación ${v.id}`);fbSave.item(item);renderCategoryTable(item.categoria);}
+  logMovFin('anulacion_venta',v,-v.montoPagado,v.montoPagado,0,`Anulación de venta ${v.id}`);
+  renderVentasTable();renderClientesTable();renderDashboard();refreshProductDatalist();showToast(`Venta anulada: ${v.id}`);
+}
+
+function renderVentasTable(){
+  const search=($('ventas_search').value||'').toLowerCase();
+  const estFilter=$('ventas_estado').value;
+  const tbody=document.querySelector('#t_ventas tbody');
+  const vv=[...ventas].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha)).filter(v=>{
+    if(estFilter&&v.estadoPago!==estFilter)return false;
+    if(search&&!(v.clienteNombre||'').toLowerCase().includes(search)&&!v.sku.toLowerCase().includes(search)&&!(v.nombre||'').toLowerCase().includes(search))return false;
+    return true;
+  });
+  if(!vv.length){tbody.innerHTML=`<tr class="empty-row"><td colspan="11">Sin ventas con esos filtros.</td></tr>`;return;}
+  tbody.innerHTML=vv.map(v=>`
+    <tr style="${v.anulada?'opacity:.5;text-decoration:line-through;':''}">
+      <td class="left">${v.fecha}</td>
+      <td class="left" style="font-size:10px;">${v.id.slice(0,12)}</td>
+      <td class="left">${v.nombre}</td>
+      <td class="left">${v.clienteNombre||'—'}</td>
+      <td>${fmt(v.cantidad)}</td>
+      <td>$${fmt(v.total)}</td>
+      <td>$${fmt(v.montoPagado)}</td>
+      <td style="color:${v.saldoPendiente>0?'var(--danger)':'var(--good)'};">$${fmt(v.saldoPendiente)}</td>
+      <td class="left">${v.canal}</td>
+      <td class="left">${v.anulada?'<span class="badge badge-anulada">Anulada</span>':estadoPagoBadge(v.estadoPago)}</td>
+      <td class="left" style="display:flex;gap:4px;flex-wrap:wrap;min-width:120px;">
+        ${!v.anulada?`<button class="btn-sm" onclick="anularVenta('${v.id}')" style="color:var(--danger);">✕ Anular</button>`:''}
+        ${!v.anulada&&v.clienteId?`<button class="btn-sm" onclick="openClienteModal('${v.clienteId}')">👤</button>`:''}
+      </td>
+    </tr>`).join('');
+  const act=ventas.filter(v=>!v.anulada);
+  const tV=act.reduce((s,v)=>s+v.total,0),tP=act.reduce((s,v)=>s+v.montoPagado,0),tS=act.reduce((s,v)=>s+v.saldoPendiente,0);
+  $('sum_ventas').innerHTML=`<div class="stat"><div class="label">Ventas activas</div><div class="value">${act.length}</div></div><div class="stat accent"><div class="label">Total vendido</div><div class="value">$${fmt(tV)}</div></div><div class="stat accent"><div class="label">Total cobrado</div><div class="value">$${fmt(tP)}</div></div><div class="stat danger"><div class="label">Por cobrar</div><div class="value">$${fmt(tS)}</div></div>`;
+}
+['ventas_search','ventas_estado'].forEach(id=>$(id).addEventListener('input',renderVentasTable));
+
+/* =========== ABONOS =========== */
+$('af_cliente').addEventListener('input',()=>{
+  const c=findCliente($('af_cliente').value);
+  const sel=$('af_venta');sel.innerHTML='<option value="">— Selecciona una venta —</option>';
+  $('af_total').textContent='—';$('af_saldo_actual').textContent='—';$('af_saldo_nuevo').textContent='—';
+  if(!c)return;
+  const vPend=ventas.filter(v=>!v.anulada&&v.clienteId===c.id&&v.estadoPago!=='pagada');
+  vPend.forEach(v=>{const op=document.createElement('option');op.value=v.id;op.textContent=`${v.id.slice(0,12)} — ${v.nombre} — Saldo: $${fmt(v.saldoPendiente)}`;sel.appendChild(op);});
+  if(!vPend.length)sel.innerHTML='<option value="">Sin deudas pendientes</option>';
+});
+$('af_venta').addEventListener('change',()=>{
+  const v=ventas.find(x=>x.id===$('af_venta').value);
+  if(!v){$('af_total').textContent='—';$('af_saldo_actual').textContent='—';$('af_saldo_nuevo').textContent='—';return;}
+  $('af_total').textContent='$'+fmt(v.total);$('af_saldo_actual').textContent='$'+fmt(v.saldoPendiente);updateAbonoSaldoNuevo();
+});
+$('af_monto').addEventListener('input',updateAbonoSaldoNuevo);
+function updateAbonoSaldoNuevo(){
+  const v=ventas.find(x=>x.id===$('af_venta').value);if(!v){return;}
+  const nuevo=Math.max(0,v.saldoPendiente-num($('af_monto').value));
+  $('af_saldo_nuevo').textContent='$'+fmt(nuevo);
+}
+if(!$('af_fecha').value)$('af_fecha').value=todayStr();
+
+$('af_submit').addEventListener('click',()=>{
+  const c=findCliente($('af_cliente').value);
+  if(!c){showToast('Selecciona un cliente válido');return;}
+  const v=ventas.find(x=>x.id===$('af_venta').value);
+  if(!v){showToast('Selecciona una venta válida');return;}
+  const monto=num($('af_monto').value);
+  if(monto<=0){showToast('El monto debe ser mayor a 0');return;}
+  if(monto>v.saldoPendiente&&!confirm(`El abono ($${fmt(monto)}) supera el saldo pendiente ($${fmt(v.saldoPendiente)}). ¿Continuar?`))return;
+  const saldo_antes=v.saldoPendiente;
+  const saldo_nuevo=Math.max(0,saldo_antes-monto);
+  const ab={id:nextAbonoId(),ventaId:v.id,clienteId:c.id,clienteNombre:c.nombre,nombreProducto:v.nombre,
+    fecha:$('af_fecha').value||todayStr(),monto,medioPago:$('af_pago').value,observacion:$('af_obs').value.trim(),
+    saldoAntes:saldo_antes,saldoDespues:saldo_nuevo,anulado:false};
+  abonos.push(ab);fbSave.abono(ab);
+  v.montoPagado+=monto;v.saldoPendiente=saldo_nuevo;v.estadoPago=calcEstadoPago(v.montoPagado,v.total);
+  fbSave.venta(v);logMovFin('abono',v,monto,saldo_antes,saldo_nuevo,`Abono ${ab.id}`);
+  renderAbonosTable();renderVentasTable();renderClientesTable();renderDashboard();
+  showToast(`Abono registrado: ${ab.id}. Saldo restante: $${fmt(saldo_nuevo)}`);clearFormAbono();
+});
+$('af_clear').addEventListener('click',clearFormAbono);
+function clearFormAbono(){['af_cliente','af_obs'].forEach(id=>$(id).value='');$('af_venta').innerHTML='<option value="">— Elige cliente primero —</option>';$('af_monto').value=0;$('af_pago').value='Efectivo';$('af_fecha').value=todayStr();$('af_total').textContent='—';$('af_saldo_actual').textContent='—';$('af_saldo_nuevo').textContent='—';}
+
+function anularAbono(id){
+  const a=abonos.find(x=>x.id===id);if(!a||a.anulado)return;
+  if(!confirm(`¿Anular abono ${a.id} de $${fmt(a.monto)}?`))return;
+  a.anulado=true;fbSave.abono(a);
+  const v=ventas.find(x=>x.id===a.ventaId);
+  if(v){v.saldoPendiente+=a.monto;v.montoPagado-=a.monto;v.estadoPago=calcEstadoPago(v.montoPagado,v.total);fbSave.venta(v);logMovFin('anulacion_abono',v,-a.monto,v.saldoPendiente-a.monto,v.saldoPendiente,`Anulación abono ${a.id}`);}
+  renderAbonosTable();renderVentasTable();renderClientesTable();renderDashboard();showToast(`Abono anulado: ${a.id}`);
+}
+
+function renderAbonosTable(){
+  const tbody=document.querySelector('#t_abonos tbody');
+  const aa=[...abonos].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  if(!aa.length){tbody.innerHTML=`<tr class="empty-row"><td colspan="10">Sin abonos registrados.</td></tr>`;return;}
+  tbody.innerHTML=aa.map(a=>`
+    <tr style="${a.anulado?'opacity:.5;text-decoration:line-through;':''}">
+      <td class="left">${a.fecha}</td>
+      <td class="left">${a.clienteNombre||'—'}</td>
+      <td class="left" style="font-size:10px;">${a.ventaId.slice(0,12)}</td>
+      <td class="left">${a.nombreProducto||'—'}</td>
+      <td>$${fmt(a.monto)}</td>
+      <td class="left">${a.medioPago}</td>
+      <td>$${fmt(a.saldoAntes)}</td>
+      <td>$${fmt(a.saldoDespues)}</td>
+      <td class="left">${a.anulado?'<span class="badge badge-anulada">Anulado</span>':'<span class="badge badge-activo">Activo</span>'}</td>
+      <td class="rm">${a.anulado?'':`<button onclick="anularAbono('${a.id}')" title="Anular">✕</button>`}</td>
+    </tr>`).join('');
+}
+
+/* =========== MOVIMIENTOS =========== */
+const MOV_LABEL={'entrada':'Entrada','edicion_manual_stock':'Edición manual','venta':'Venta','venta_anulada':'Venta anulada','eliminacion':'Eliminación','importacion_excel':'Importación Excel','restauracion_json':'Restauración JSON'};
+function logMovStock(tipo,item,cant,sa,sn,obs){
+  const m={id:'MS-'+Date.now()+'-'+Math.random().toString(36).slice(2,5),fecha:nowISO(),tipo,sku:item.sku,nombre:item.nombre||item.sku,cantidad:cant,stockAnterior:sa,stockNuevo:sn,observacion:obs};
+  movimientos.push(m);fbSave.movStock(m);renderMovimientosTable();
+}
+const MOVF_LABEL={'pago_inicial':'Pago inicial','abono':'Abono','anulacion_venta':'Anulación venta','anulacion_abono':'Anulación abono'};
+function logMovFin(tipo,venta,monto,saldoAntes,saldoDespues,obs){
+  const m={id:'MF-'+Date.now()+'-'+Math.random().toString(36).slice(2,5),fecha:nowISO(),tipo,ventaId:venta.id,cliente:venta.clienteNombre||'',monto,saldoAntes,saldoDespues,observacion:obs};
+  movimientosFinancieros.push(m);fbSave.movFin(m);renderMovFinTable();
+}
+function renderMovimientosTable(){
+  const tbody=document.querySelector('#t_movimientos tbody');
+  const ms=[...movimientos].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  if(!ms.length){tbody.innerHTML=`<tr class="empty-row"><td colspan="8">Sin movimientos de stock.</td></tr>`;return;}
+  tbody.innerHTML=ms.map(m=>`<tr><td class="left">${new Date(m.fecha).toLocaleString('es-CL')}</td><td class="left">${MOV_LABEL[m.tipo]||m.tipo}</td><td class="left">${m.sku}</td><td class="left">${m.nombre}</td><td>${m.cantidad>0?'+':''}${fmt(m.cantidad)}</td><td>${fmt(m.stockAnterior)}</td><td>${fmt(m.stockNuevo)}</td><td class="left">${m.observacion||''}</td></tr>`).join('');
+}
+function renderMovFinTable(){
+  const tbody=document.querySelector('#t_mov_fin tbody');
+  const ms=[...movimientosFinancieros].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  if(!ms.length){tbody.innerHTML=`<tr class="empty-row"><td colspan="8">Sin movimientos financieros.</td></tr>`;return;}
+  tbody.innerHTML=ms.map(m=>`<tr><td class="left">${new Date(m.fecha).toLocaleString('es-CL')}</td><td class="left">${MOVF_LABEL[m.tipo]||m.tipo}</td><td class="left" style="font-size:10px;">${(m.ventaId||'').slice(0,12)}</td><td class="left">${m.cliente||'—'}</td><td>$${fmt(m.monto)}</td><td>$${fmt(m.saldoAntes)}</td><td>$${fmt(m.saldoDespues)}</td><td class="left">${m.observacion||''}</td></tr>`).join('');
+}
+
+/* =========== DASHBOARD =========== */
+function renderDashboard(){
+  const activos=inventory.filter(i=>i.estado!=='eliminado');
+  const st=activos.reduce((s,i)=>s+(i.stock||0),0);
+  const inv=activos.reduce((s,i)=>s+(i.costo||0)*(i.stock||0),0);
+  const vlr=activos.reduce((s,i)=>s+(i.final||0)*(i.stock||0),0);
+  const agot=activos.filter(i=>i.stock<=0);
+  const bajo=activos.filter(i=>i.stock>0&&i.stock<=2);
+  const sinCosto=activos.filter(i=>!i.costo||i.costo<=0);
+  const now=new Date();const ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const vAct=ventas.filter(v=>!v.anulada);
+  const vMes=vAct.filter(v=>(v.fecha||'').startsWith(ym));
+  const tVmes=vMes.reduce((s,v)=>s+v.total,0);
+  const tUtil=vMes.reduce((s,v)=>s+v.utilidad,0);
+  const tCobrado=vAct.reduce((s,v)=>s+v.montoPagado,0);
+  const tPorCobrar=vAct.reduce((s,v)=>s+v.saldoPendiente,0);
+  const vPend=vAct.filter(v=>v.estadoPago!=='pagada');
+  const cDeuda=new Set(vPend.filter(v=>v.clienteId).map(v=>v.clienteId)).size;
+  const aabMes=abonos.filter(a=>!a.anulado&&(a.fecha||'').startsWith(ym));
+  const tAboMes=aabMes.reduce((s,a)=>s+a.monto,0);
+  const ultV=vAct.sort((a,b)=>new Date(b.fecha)-new Date(a.fecha))[0];
+  const ultA=abonos.filter(a=>!a.anulado).sort((a,b)=>new Date(b.fecha)-new Date(a.fecha))[0];
+  const cMax=clientes.filter(c=>c.estado!=='eliminado').map(c=>{const s=getClienteSummary(c.id);return{nombre:c.nombre,saldo:s.saldoPendiente};}).sort((a,b)=>b.saldo-a.saldo)[0];
+  $('sum_dashboard').innerHTML=`
+    <div class="stat"><div class="label">Stock total</div><div class="value">${fmt(st)}</div></div>
+    <div class="stat"><div class="label">Inversión total</div><div class="value">$${fmt(inv)}</div></div>
+    <div class="stat accent"><div class="label">Valor estimado de venta</div><div class="value">$${fmt(vlr)}</div></div>
+    <div class="stat accent"><div class="label">Ventas del mes</div><div class="value">$${fmt(tVmes)}</div></div>
+    <div class="stat accent"><div class="label">Utilidad estimada mes</div><div class="value">$${fmt(tUtil)}</div></div>
+    <div class="stat blue"><div class="label">Abonos del mes</div><div class="value">$${fmt(tAboMes)}</div></div>
+    <div class="stat accent"><div class="label">Total cobrado</div><div class="value">$${fmt(tCobrado)}</div></div>
+    <div class="stat danger"><div class="label">Por cobrar</div><div class="value">$${fmt(tPorCobrar)}</div></div>
+    <div class="stat warn"><div class="label">Ventas pendientes</div><div class="value">${vPend.length}</div></div>
+    <div class="stat warn"><div class="label">Clientes con deuda</div><div class="value">${cDeuda}</div></div>
+    <div class="stat danger"><div class="label">Agotados</div><div class="value">${agot.length}</div></div>
+    <div class="stat warn"><div class="label">Bajo stock</div><div class="value">${bajo.length}</div></div>
+    ${cMax&&cMax.saldo>0?`<div class="stat danger"><div class="label">Mayor deuda</div><div class="value" style="font-size:13px;">${cMax.nombre}<br>$${fmt(cMax.saldo)}</div></div>`:''}
+    ${ultV?`<div class="stat"><div class="label">Última venta</div><div class="value" style="font-size:13px;">${ultV.fecha}<br>${ultV.nombre}</div></div>`:''}
+    ${ultA?`<div class="stat"><div class="label">Último abono</div><div class="value" style="font-size:13px;">${ultA.fecha}<br>$${fmt(ultA.monto)}</div></div>`:''}`;
+  const alerts=[];
+  bajo.forEach(i=>alerts.push({type:'warn',msg:`Stock bajo: "${i.nombre||i.sku}" (${i.sku}) — ${i.stock} ud(s).`}));
+  agot.forEach(i=>alerts.push({type:'danger',msg:`Agotado: "${i.nombre||i.sku}" (${i.sku})`}));
+  sinCosto.forEach(i=>alerts.push({type:'warn',msg:`Sin costo: "${i.nombre||i.sku}" (${i.sku})`}));
+  ventas.filter(v=>!v.anulada&&v.alertaCostoBajo).forEach(v=>alerts.push({type:'danger',msg:`Venta ${v.id.slice(0,12)}: se vendió "${v.nombre}" bajo el costo.`}));
+  clientes.filter(c=>c.estado!=='eliminado'&&!c.telefono).slice(0,5).forEach(c=>alerts.push({type:'warn',msg:`Sin teléfono: "${c.nombre}"`}));
+  const hoy=todayStr();
+  vPend.filter(v=>{const diff=(new Date(hoy)-new Date(v.fecha))/86400000;return diff>7&&v.estadoPago==='pendiente';}).forEach(v=>alerts.push({type:'danger',msg:`Venta sin abono hace más de 7 días: ${v.id.slice(0,12)} — ${v.clienteNombre||'sin cliente'} — $${fmt(v.saldoPendiente)}`}));
+  $('alert_list').innerHTML=alerts.length===0?`<div class="alert-empty">Sin alertas. Todo en orden ✓</div>`:alerts.map(a=>`<div class="alert-item ${a.type}"><span class="ico">${a.type==='danger'?'⛔':'⚠'}</span><span>${a.msg}</span></div>`).join('');
+}
+
+/* =========== CONFIGURACIÓN =========== */
+function applyNegocioConfig(cfg){
+  if(!cfg)return;
+  Object.assign(negocioConfig,cfg);
+  if($('cfg_nombre'))$('cfg_nombre').value=negocioConfig.nombre||'';
+  if($('cfg_telefono'))$('cfg_telefono').value=negocioConfig.telefono||'';
+  if($('cfg_correo'))$('cfg_correo').value=negocioConfig.correo||'';
+  if($('cfg_instagram'))$('cfg_instagram').value=negocioConfig.instagram||'';
+  if($('cfg_msgcobranza'))$('cfg_msgcobranza').value=negocioConfig.msgCobranza||'';
+  if($('cfg_msgoferta'))$('cfg_msgoferta').value=negocioConfig.msgOferta||'';
+  if($('cfg_msgproducto'))$('cfg_msgproducto').value=negocioConfig.msgProducto||'';
+  if($('cfg_firma'))$('cfg_firma').value=negocioConfig.firma||'';
+}
+function saveConfig(){
+  negocioConfig={nombre:$('cfg_nombre').value,telefono:$('cfg_telefono').value,correo:$('cfg_correo').value,instagram:$('cfg_instagram').value,msgCobranza:$('cfg_msgcobranza').value,msgOferta:$('cfg_msgoferta').value,msgProducto:$('cfg_msgproducto').value,firma:$('cfg_firma').value};
+  fbSave.negocio();showToast('Configuración guardada');
+}
+
+/* =========== FOTOS: COMPRESIÓN Y UPLOAD =========== */
+// Comprime la imagen a max 500px ancho, JPEG calidad 72% (~15-40KB resultado)
+// Resultado: base64 string que cabe en un documento de Firestore (límite 1MB)
+async function compressImage(file, maxWidth=500, quality=0.72){
+  return new Promise(resolve=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const canvas=document.createElement('canvas');
+        let w=img.width, h=img.height;
+        if(w>maxWidth){ h=Math.round(h*maxWidth/w); w=maxWidth; }
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg',quality));
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function triggerFotoUpload(prefix){ $(`${prefix}_foto_file`).click(); }
+function triggerFotoModal(sku){ $(`modal_foto_file_${sku}`)?.click(); }
+
+function updateFotoPreview(prefix, dataUrl){
+  const url=dataUrl||$(prefix+'_foto')?.value||'';
+  const prev=$(prefix+'_foto_prev');
+  if(!prev) return;
+  prev.innerHTML=url?`<img src="${url}" alt="foto">`:'💍';
+}
+
+// Setup de file inputs en los 3 formularios de categoría
+function setupFotoInputs(){
+  ['bf','pf','cf'].forEach(prefix=>{
+    const fi=$(prefix+'_foto_file');
+    if(!fi) return;
+    fi.addEventListener('change', async ()=>{
+      const file=fi.files[0]; if(!file) return;
+      showToast('Comprimiendo foto...');
+      const b64=await compressImage(file);
+      $(prefix+'_foto').value=b64;
+      updateFotoPreview(prefix, b64);
+      showToast('Foto lista ✓ (se guardará al agregar la pieza)');
+    });
+  });
+}
+
+// Upload desde modal de detalle de producto
+async function handleFotoModalUpload(sku, input){
+  const file=input.files[0]; if(!file) return;
+  showToast('Comprimiendo foto...');
+  const b64=await compressImage(file);
+  updateFoto(sku, b64);
+  // Actualizar la imagen en el modal visualmente
+  const imgEl=document.querySelector('#modal-producto-body img');
+  if(imgEl) imgEl.src=b64;
+  else { const placeholder=document.querySelector('#modal-producto-body .foto-placeholder'); if(placeholder) placeholder.textContent=''; }
+  renderCatalogo();
+  showToast('Foto actualizada ✓');
+}
+
+/* =========== EXPORTAR CATÁLOGO COMPARTIBLE =========== */
+function exportCatalogo(){
+  const items=inventory.filter(i=>i.estado!=='eliminado');
+  if(!items.length){ showToast('No hay productos en el inventario'); return; }
+  const cfg=negocioConfig;
+  const tel=(cfg.telefono||'').replace(/[\s\-\(\)\+]/g,'');
+
+  const cards=items.map(i=>{
+    const badgeColor=i.stock<=0?'#b5483a':i.stock<=2?'#a8761f':'#3f6b4a';
+    const badgeBg=i.stock<=0?'#f7e3e022':i.stock<=2?'#f6ecd233':'#e3efe444';
+    const badgeTxt=i.stock<=0?'Agotado':i.stock<=2?'Últimas unidades':'Disponible';
+    const catLabel={'brasil':'Brasil','plata':'Plata Chile','china':'China Acero'}[i.categoria]||i.categoria;
+    const foto=i.fotoUrl
+      ? `<img src="${i.fotoUrl}" alt="${(i.nombre||'').replace(/"/g,'')}" style="width:100%;height:165px;object-fit:cover;display:block;">`
+      : `<div style="width:100%;height:165px;background:#f3e6c8;display:flex;align-items:center;justify-content:center;font-size:52px;">💍</div>`;
+    const waMsg=encodeURIComponent(`Hola${cfg.nombre?' de '+cfg.nombre:''}! Me interesa el producto: ${i.nombre||i.sku} (${i.sku}) con precio $${fmt(i.final)}.`);
+    const waBtnHref=tel?`https://wa.me/${tel}?text=${waMsg}`:'';
+    const waBtn=waBtnHref
+      ? `<a href="${waBtnHref}" target="_blank" rel="noopener" style="display:block;text-align:center;background:#25d366;color:#fff;border-radius:7px;padding:9px;font-weight:700;font-size:12.5px;text-decoration:none;margin-top:8px;">💬 Consultar por WhatsApp</a>`
+      : '';
+    return `<div class="card" data-nombre="${(i.nombre||'').toLowerCase()}" data-sku="${i.sku.toLowerCase()}" data-cat="${catLabel.toLowerCase()}" data-tipo="${(i.tipo||'').toLowerCase()}" data-stock="${i.stock}">
+      ${foto}
+      <div class="cinfo">
+        <div class="cmeta" style="margin-bottom:3px;"><span style="font-size:10px;color:#9c8f80;">${i.sku}</span><span style="font-size:10px;color:#9c8f80;">${catLabel} · ${i.tipo||''}</span></div>
+        <div style="font-family:Georgia,serif;font-weight:600;font-size:14.5px;margin-bottom:5px;line-height:1.3;">${i.nombre||'Sin nombre'}</div>
+        <div style="font-size:19px;font-weight:700;color:#3f6b4a;margin-bottom:8px;">$${fmt(i.final)}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;background:${badgeBg};color:${badgeColor};">${badgeTxt}</span>
+          ${i.stock>0?`<span style="font-size:11px;color:#9c8f80;">Stock: ${i.stock}</span>`:''}
+        </div>
+        ${waBtn}
+      </div>
+    </div>`;
+  }).join('');
+
+  const htmlCatalogo=`<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catálogo · ${cfg.nombre||'Punto Brassil'}</title>
+<style>
+*{box-sizing:border-box;}
+body{margin:0;background:#faf6ef;color:#2b2420;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+h1,h2{font-family:Georgia,serif;font-weight:600;margin:0;}
+.topbar{background:#fff;border-bottom:1px solid #e6dccb;padding:16px 22px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.mark{width:44px;height:44px;border-radius:50%;background:conic-gradient(from 220deg,#a9802f,#7c5b1e,#a9802f);display:flex;align-items:center;justify-content:center;color:#fff;font-family:Georgia,serif;font-size:17px;flex-shrink:0;}
+.brand-text h1{font-size:20px;}.brand-text p{margin:3px 0 0;color:#6b5d52;font-size:12.5px;}
+.ctabts{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap;}
+.ctabts a{padding:8px 13px;border-radius:8px;font-size:12.5px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
+.wrap{max-width:1160px;margin:0 auto;padding:22px 16px 60px;}
+.searchbar{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
+.searchbar input,.searchbar select{padding:9px 11px;border:1px solid #e6dccb;border-radius:8px;font-size:13px;background:#fffdf9;color:#2b2420;font-family:inherit;}
+.searchbar input{flex:1;min-width:180px;}
+.searchbar input:focus,.searchbar select:focus{outline:none;border-color:#a9802f;box-shadow:0 0 0 3px #f3e6c8;}
+#count{font-size:12.5px;color:#9c8f80;margin-bottom:12px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;}
+.card{background:#fff;border:1px solid #e6dccb;border-radius:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.06);transition:.15s ease;}
+.card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.1);}
+.cinfo{padding:11px 13px;}
+.cmeta{display:flex;justify-content:space-between;}
+.empty{text-align:center;color:#9c8f80;font-style:italic;padding:40px;grid-column:1/-1;font-size:14px;}
+footer{text-align:center;color:#9c8f80;font-size:12px;padding:30px 16px;border-top:1px solid #e6dccb;margin-top:20px;}
+@media(max-width:600px){.grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr));}.topbar{flex-direction:column;align-items:flex-start;}.ctabts{margin-left:0;}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="mark">PB</div>
+  <div class="brand-text"><h1>${cfg.nombre||'Punto Brassil'}</h1><p>${items.length} producto(s) · Catálogo generado el ${todayStr()}</p></div>
+  <div class="ctabts">
+    ${tel?`<a href="https://wa.me/${tel}" target="_blank" style="background:#25d366;color:#fff;">💬 WhatsApp</a>`:''}
+    ${cfg.instagram?`<a href="https://instagram.com/${(cfg.instagram||'').replace('@','')}" target="_blank" style="background:#e1306c;color:#fff;">📸 ${cfg.instagram}</a>`:''}
+    ${cfg.correo?`<a href="mailto:${cfg.correo}" style="background:#2a5ba8;color:#fff;">📧 Email</a>`:''}
+  </div>
+</div>
+<div class="wrap">
+  <div class="searchbar">
+    <input type="text" id="buscar" placeholder="🔍  Buscar por nombre o código…" oninput="filtrar()">
+    <select id="fcat" onchange="filtrar()"><option value="">Todas las categorías</option><option>Brasil</option><option>Plata Chile</option><option>China Acero</option></select>
+    <select id="ftipo" onchange="filtrar()"><option value="">Todos los tipos</option><option>Anillo</option><option>Collar</option><option>Pulsera</option><option>Aros</option><option>Cadena</option><option>Dije</option><option>Otro</option></select>
+    <select id="fstock" onchange="filtrar()"><option value="">Todo el stock</option><option value="disp">Disponibles</option><option value="bajo">Últimas unidades</option><option value="agot">Agotados</option></select>
+  </div>
+  <div id="count"></div>
+  <div class="grid" id="grid">${cards}</div>
+</div>
+<footer>© ${new Date().getFullYear()} ${cfg.nombre||'Punto Brassil'}${cfg.instagram?' · '+cfg.instagram:''}${cfg.telefono?' · '+cfg.telefono:''}</footer>
+<script>
+const allCards=[...document.querySelectorAll('#grid .card')];
+function filtrar(){
+  const b=document.getElementById('buscar').value.toLowerCase();
+  const fc=document.getElementById('fcat').value.toLowerCase();
+  const ft=document.getElementById('ftipo').value.toLowerCase();
+  const fs=document.getElementById('fstock').value;
+  let visible=0;
+  allCards.forEach(c=>{
+    const stock=parseInt(c.dataset.stock||'0',10);
+    const showStock=!fs||(fs==='disp'&&stock>0)||(fs==='bajo'&&stock>0&&stock<=2)||(fs==='agot'&&stock<=0);
+    const showSearch=!b||c.dataset.nombre.includes(b)||c.dataset.sku.includes(b);
+    const showCat=!fc||c.dataset.cat.includes(fc);
+    const showTipo=!ft||c.dataset.tipo.includes(ft);
+    const show=showSearch&&showCat&&showTipo&&showStock;
+    c.style.display=show?'':'none';
+    if(show)visible++;
+  });
+  document.getElementById('count').textContent=visible+' producto'+(visible===1?'':'s')+' encontrado'+(visible===1?'':'s');
+}
+filtrar();
+<\/script>
+</body>
+</html>`;
+
+  dlBlob(htmlCatalogo, `catalogo_${(cfg.nombre||'Punto_Brassil').replace(/\s+/g,'_')}_${todayStr()}.html`, 'text/html;charset=utf-8;');
+  showToast('Catálogo exportado ✓ — ábrelo en el navegador o compártelo por WhatsApp');
+}
+
+/* =========== WHATSAPP / CORREO / MENSAJES =========== */
+function waLink(tel,msg){
+  tel=(tel||'').replace(/[\s\-\(\)\+]/g,'');
+  if(tel.length===9)tel='56'+tel;
+  else if(tel.startsWith('0'))tel='56'+tel.slice(1);
+  return`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
+}
+function buildMsg(template,cliente,venta,item){
+  const s=cliente?getClienteSummary(cliente.id):null;
+  const vars={
+    cliente:cliente?.nombre||'',saldo:s?`$${fmt(s.saldoPendiente)}`:'',
+    negocio:negocioConfig.nombre||'Punto Brassil',telefono_negocio:negocioConfig.telefono||'',
+    correo_negocio:negocioConfig.correo||'',instagram:negocioConfig.instagram||'',
+    producto:item?.nombre||venta?.nombre||'',precio:item?`$${fmt(item.final)}`:'',
+    sku:item?.sku||venta?.sku||'',firma:negocioConfig.firma?`\n${negocioConfig.firma}`:'',
+    detalle_deuda:s&&s.saldoPendiente>0?`Tienes un saldo pendiente de $${fmt(s.saldoPendiente)}.`:''
+  };
+  return (template||'').replace(/\{(\w+)\}/g,(m,k)=>vars[k]!==undefined?vars[k]:m);
+}
+function compartirProductoWA(sku){
+  const item=inventory.find(i=>i.sku===sku);if(!item)return;
+  const msg=buildMsg(negocioConfig.msgProducto,null,null,item);
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank');
+}
+
+/* =========== PARÁMETROS =========== */
+const PARAM_IDS=['b_tc','b_aduana','b_m1','b_m2','b_iva','b_viaje','b_red','b_shopify','p_m2','p_iva','p_viaje','p_red','p_shopify','c_aduana','c_m1','c_m2','c_iva','c_viaje','c_red','c_shopify'];
+function getParamsObject(){const o={};PARAM_IDS.forEach(id=>o[id]=num($(id).value));return o;}
+function applyParamsObject(o){if(!o)return;PARAM_IDS.forEach(id=>{if(o[id]!==undefined)$(id).value=o[id];});}
+
+/* =========== EXCEL EXPORT =========== */
+function setCell(ws,addr,val){
+  if(val===null||val===undefined||val==='')return;
+  if(typeof val==='string'&&val.startsWith('='))ws[addr]={t:'n',f:val.slice(1)};
+  else if(typeof val==='number')ws[addr]={t:'n',v:val};
+  else ws[addr]={t:'s',v:String(val)};
+}
+function finalizeSheet(ws,maxR,maxC){ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:maxR,c:maxC}});}
+
+function buildBrasilSheet(){
+  const ws={};const items=inventory.filter(i=>i.categoria==='brasil'&&i.estado!=='eliminado');
+  setCell(ws,'X1','algunos gastos operacionales');setCell(ws,'F2','CALCULO VALOR DE JOYA ENCHAPADA EN BRASIL');setCell(ws,'N2','COSTO JOYA');setCell(ws,'S2','con IVA');setCell(ws,'U2','Precio de VENTA');
+  setCell(ws,'X2',pct('b_viaje'));setCell(ws,'Y2',pct('b_red'));setCell(ws,'Z2',pct('b_shopify'));
+  setCell(ws,'A3','REAL');setCell(ws,'B3',num($('b_tc').value));
+  setCell(ws,'F3','depende valor oro');setCell(ws,'G3','MOD');setCell(ws,'H3','depende valor oro');setCell(ws,'I3','Grosor');setCell(ws,'K3','Valor del elemento');setCell(ws,'L3','VALOR EN REALES');setCell(ws,'N3','COSTO PIEZA en brasil');setCell(ws,'R3','MARGEN');setCell(ws,'S3','Valor aprox de santiago');setCell(ws,'U3','MARGEN 2');setCell(ws,'V3','Valor de ventaTalca');setCell(ws,'X3','sobre el COSTO');setCell(ws,'Y3','sobre el valor de venta');setCell(ws,'Z3','sobre el valor de venta');
+  setCell(ws,'O4',pct('b_aduana'));setCell(ws,'R4',pct('b_m1'));setCell(ws,'U4',pct('b_m2'));
+  const h5={A5:'NOMBRE',B5:'PROVEEDOR',C5:'TIPO DE JOYA',D5:'ID',E5:'STOCK',F5:'$ X GRAMO',G5:'$ MANO OBRA',H5:'$ BAÑO',I5:'CAMADA',J5:'PESO PRODUCTO',K5:'PRECIO BRUTO',L5:'VALOR FINAL',N5:'VALOR CL',O5:'ADUANA',P5:'COSTO PIEZA',R5:'$ primera ganancia',S5:'VALOR MAYORISTA',U5:'$ segunada ganancia',V5:'VALOR MINORISTA',X5:'GASTOS VIAJE',Y5:'REDCOMPRA',Z5:'COMISION SHOPIFY',AB5:'VALOR MINORISTA 2',AC5:'OFERTA',AD5:'FOTO URL'};
+  Object.entries(h5).forEach(([a,v])=>setCell(ws,a,v));
+  items.forEach((it,idx)=>{const r=6+idx;
+    setCell(ws,'A'+r,it.nombre);setCell(ws,'B'+r,it.proveedor);setCell(ws,'C'+r,it.tipo);setCell(ws,'D'+r,it.sku);setCell(ws,'E'+r,it.stock);setCell(ws,'F'+r,it.grm);setCell(ws,'G'+r,it.mo);setCell(ws,'H'+r,it.bano);setCell(ws,'I'+r,it.grosor);setCell(ws,'J'+r,it.peso);setCell(ws,'K'+r,it.bruto);
+    setCell(ws,'L'+r,`=(G${r}+I${r})*F${r}/1000*J${r}+(H${r}/1000)*J${r}+K${r}`);setCell(ws,'N'+r,`=L${r}*$B$3`);setCell(ws,'O'+r,`=N${r}*$O$4`);setCell(ws,'P'+r,`=SUM(N${r}:O${r})`);setCell(ws,'R'+r,`=P${r}/(1-$R$4)`);setCell(ws,'S'+r,`=R${r}*1.19`);setCell(ws,'U'+r,`=R${r}/(1-$U$4)`);setCell(ws,'V'+r,`=U${r}*1.19`);setCell(ws,'X'+r,`=P${r}*$X$2`);setCell(ws,'Y'+r,`=V${r}*$Y$2`);setCell(ws,'Z'+r,`=V${r}*$Z$2`);setCell(ws,'AB'+r,`=V${r}+X${r}+Y${r}+Z${r}`);
+    if(it.fotoUrl&&!it.fotoUrl.startsWith('data:'))setCell(ws,'AD'+r,it.fotoUrl); // solo URLs, no base64 en Excel
+  });finalizeSheet(ws,Math.max(6+items.length,6),29);return ws;
+}
+function buildPlataSheet(){
+  const ws={};const items=inventory.filter(i=>i.categoria==='plata'&&i.estado!=='eliminado');
+  setCell(ws,'L1','algunos gastos operacionales');setCell(ws,'G2','con IVA');setCell(ws,'I2','Precio de VENTA');setCell(ws,'L2',pct('p_viaje'));setCell(ws,'M2',pct('p_red'));setCell(ws,'N2',pct('p_shopify'));
+  setCell(ws,'A3','REAL');setCell(ws,'B3',num($('b_tc').value));setCell(ws,'G3','Valor aprox de santiago');setCell(ws,'I3','MARGEN 2');setCell(ws,'J3','Valor de ventaTalca');setCell(ws,'L3','sobre el COSTO');setCell(ws,'M3','sobre el valor de venta');setCell(ws,'N3','sobre el valor de venta');setCell(ws,'I4',pct('p_m2'));
+  const h5={A5:'NOMBRE',B5:'PROVEEDOR',C5:'TIPO DE JOYA',D5:'ID',E5:'STOCK',G5:'$ primera ganancia',I5:'$ segunada ganancia',J5:'VALOR MINORISTA',L5:'GASTOS VIAJE',M5:'REDCOMPRA',N5:'COMISION SHOPIFY',P5:'VALOR MINORISTA 2',Q5:'OFERTA',R5:'FOTO URL'};
+  Object.entries(h5).forEach(([a,v])=>setCell(ws,a,v));
+  items.forEach((it,idx)=>{const r=6+idx;
+    setCell(ws,'A'+r,it.nombre);setCell(ws,'B'+r,it.proveedor);setCell(ws,'C'+r,it.tipo);setCell(ws,'D'+r,it.sku);setCell(ws,'E'+r,it.stock);setCell(ws,'G'+r,it.costoBase||0);
+    setCell(ws,'I'+r,`=G${r}/(1-$I$4)`);setCell(ws,'J'+r,`=I${r}*1.19`);setCell(ws,'L'+r,`=G${r}*$L$2`);setCell(ws,'M'+r,`=J${r}*$M$2`);setCell(ws,'N'+r,`=J${r}*$N$2`);setCell(ws,'P'+r,`=J${r}+L${r}+M${r}+N${r}`);
+    if(it.fotoUrl&&!it.fotoUrl.startsWith('data:'))setCell(ws,'R'+r,it.fotoUrl);
+  });finalizeSheet(ws,Math.max(6+items.length,6),17);return ws;
+}
+function buildChinaSheet(){
+  const ws={};const items=inventory.filter(i=>i.categoria==='china'&&i.estado!=='eliminado');
+  setCell(ws,'Q1','algunos gastos operacionales');setCell(ws,'G2','COSTO JOYA');setCell(ws,'L2','con IVA');setCell(ws,'N2','Precio de VENTA');setCell(ws,'Q2',pct('c_viaje'));setCell(ws,'R2',pct('c_red'));setCell(ws,'S2',pct('c_shopify'));
+  setCell(ws,'A3','REAL');setCell(ws,'B3',num($('b_tc').value));setCell(ws,'G3','COSTO PIEZA CHINA');setCell(ws,'K3','MARGEN');setCell(ws,'L3','Valor aprox de santiago');setCell(ws,'N3','MARGEN 2');setCell(ws,'O3','Valor de ventaTalca');setCell(ws,'Q3','sobre el COSTO');setCell(ws,'R3','sobre el valor de venta');setCell(ws,'S3','sobre el valor de venta');setCell(ws,'H4',pct('c_aduana'));setCell(ws,'K4',pct('c_m1'));setCell(ws,'N4',pct('c_m2'));
+  const h5={A5:'NOMBRE',B5:'PROVEEDOR',C5:'TIPO DE JOYA',D5:'ID',E5:'STOCK',G5:'VALOR CL',H5:'ADUANA',I5:'COSTO PIEZA',K5:'$ primera ganancia',L5:'VALOR MAYORIASTA',N5:'$ segunada ganancia',O5:'VALOR MINORISTA',Q5:'GASTOS VIAJE',R5:'REDCOMPRA',S5:'COMISION SHOPIFY',U5:'VALOR MINORISTA 2',V5:'OFERTA',W5:'FOTO URL'};
+  Object.entries(h5).forEach(([a,v])=>setCell(ws,a,v));
+  items.forEach((it,idx)=>{const r=6+idx;
+    setCell(ws,'A'+r,it.nombre);setCell(ws,'B'+r,it.proveedor);setCell(ws,'C'+r,it.tipo);setCell(ws,'D'+r,it.sku);setCell(ws,'E'+r,it.stock);setCell(ws,'G'+r,it.valorcl||0);
+    setCell(ws,'H'+r,`=G${r}*$H$4`);setCell(ws,'I'+r,`=SUM(G${r}:H${r})`);setCell(ws,'K'+r,`=I${r}/(1-$K$4)`);setCell(ws,'L'+r,`=K${r}*1.19`);setCell(ws,'N'+r,`=K${r}/(1-$N$4)`);setCell(ws,'O'+r,`=N${r}*1.19`);setCell(ws,'Q'+r,`=I${r}*$Q$2`);setCell(ws,'R'+r,`=O${r}*$R$2`);setCell(ws,'S'+r,`=O${r}*$S$2`);setCell(ws,'U'+r,`=O${r}+Q${r}+R${r}+S${r}`);
+    if(it.fotoUrl&&!it.fotoUrl.startsWith('data:'))setCell(ws,'W'+r,it.fotoUrl);
+  });finalizeSheet(ws,Math.max(6+items.length,6),22);return ws;
+}
+function sheetFromAoa(headers,rows){return XLSX.utils.aoa_to_sheet([headers,...rows]);}
+function buildVentasSheet(){return sheetFromAoa(['Fecha','ID','SKU','Producto','Categoría','Cliente','Cantidad','Precio Unit.','Total','Monto Pagado','Saldo Pendiente','Estado Pago','Canal','Medio Pago','Utilidad','Anulada','Observación'],ventas.map(v=>[v.fecha,v.id,v.sku,v.nombre,CAT_LABEL[v.categoria]||v.categoria,v.clienteNombre||'',v.cantidad,v.precioUnit,v.total,v.montoPagado,v.saldoPendiente,v.estadoPago,v.canal,v.medioPago,v.utilidad,v.anulada?'Sí':'No',v.observacion||'']));}
+function buildClientesSheet(){return sheetFromAoa(['ID','Nombre','Teléfono','Correo','Instagram','Observaciones','Fecha Creación'],clientes.map(c=>[c.id,c.nombre,c.telefono||'',c.correo||'',c.instagram||'',c.observaciones||'',(c.fechaCreacion||'').slice(0,10)]));}
+function buildAbonosSheet(){return sheetFromAoa(['ID','Venta','Cliente','Producto','Fecha','Monto','Medio Pago','Saldo Antes','Saldo Después','Anulado','Observación'],abonos.map(a=>[a.id,a.ventaId,a.clienteNombre||'',a.nombreProducto||'',a.fecha,a.monto,a.medioPago,a.saldoAntes,a.saldoDespues,a.anulado?'Sí':'No',a.observacion||'']));}
+function buildDeudasSheet(){
+  const rows=clientes.filter(c=>c.estado!=='eliminado').map(c=>{const s=getClienteSummary(c.id);return[c.nombre,c.telefono||'',c.correo||'',s.totalComprado,s.totalPagado,s.saldoPendiente,s.cantPend,s.ultiC||'',s.ultiA||'',s.estado==='deuda'?'Con deuda':'Al día'];});
+  return sheetFromAoa(['Cliente','Teléfono','Correo','Total Comprado','Total Pagado','Saldo Pendiente','Ventas Pendientes','Última Compra','Último Abono','Estado'],rows);
+}
+function buildMovStockSheet(){return sheetFromAoa(['Fecha','Tipo','SKU','Producto','Cantidad','Stock Antes','Stock Después','Observación'],movimientos.map(m=>[m.fecha,MOV_LABEL[m.tipo]||m.tipo,m.sku,m.nombre,m.cantidad,m.stockAnterior,m.stockNuevo,m.observacion||'']));}
+function buildMovFinSheet(){return sheetFromAoa(['Fecha','Tipo','Venta','Cliente','Monto','Saldo Antes','Saldo Después','Observación'],movimientosFinancieros.map(m=>[m.fecha,MOVF_LABEL[m.tipo]||m.tipo,m.ventaId||'',m.cliente||'',m.monto,m.saldoAntes,m.saldoDespues,m.observacion||'']));}
+function buildParamsSheet(){const p=getParamsObject();const r=[['Brasil','CLP/R$',p.b_tc],['Brasil','Aduana %',p.b_aduana],['Brasil','Margen mayorista %',p.b_m1],['Brasil','Margen minorista %',p.b_m2],['Brasil','IVA %',p.b_iva],['Brasil','Gastos viaje %',p.b_viaje],['Brasil','Redcompra %',p.b_red],['Brasil','Shopify %',p.b_shopify],['Plata','Margen minorista %',p.p_m2],['Plata','IVA %',p.p_iva],['Plata','Gastos viaje %',p.p_viaje],['Plata','Redcompra %',p.p_red],['Plata','Shopify %',p.p_shopify],['China','Aduana %',p.c_aduana],['China','Margen mayorista %',p.c_m1],['China','Margen minorista %',p.c_m2],['China','IVA %',p.c_iva],['China','Gastos viaje %',p.c_viaje],['China','Redcompra %',p.c_red],['China','Shopify %',p.c_shopify]];return sheetFromAoa(['Categoría','Parámetro','Valor'],r);}
+function buildConfigSheet(){return sheetFromAoa(['Clave','Valor'],[['Nombre negocio',negocioConfig.nombre],['Teléfono',negocioConfig.telefono],['Correo',negocioConfig.correo],['Instagram',negocioConfig.instagram],['Firma',negocioConfig.firma],['Msg cobranza',negocioConfig.msgCobranza],['Msg oferta',negocioConfig.msgOferta],['Msg producto',negocioConfig.msgProducto]]);}
+
+$('btnExportExcel').addEventListener('click',()=>{
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,buildBrasilSheet(),'ENCHAPADASORO BRASIL');
+  XLSX.utils.book_append_sheet(wb,buildPlataSheet(),'PLATA CHILE');
+  XLSX.utils.book_append_sheet(wb,buildChinaSheet(),'ACERO ORO CHINA');
+  XLSX.utils.book_append_sheet(wb,buildVentasSheet(),'Ventas');
+  XLSX.utils.book_append_sheet(wb,buildClientesSheet(),'Clientes');
+  XLSX.utils.book_append_sheet(wb,buildAbonosSheet(),'Abonos');
+  XLSX.utils.book_append_sheet(wb,buildDeudasSheet(),'Deudas');
+  XLSX.utils.book_append_sheet(wb,buildMovStockSheet(),'Movimientos_Stock');
+  XLSX.utils.book_append_sheet(wb,buildMovFinSheet(),'Movimientos_Financieros');
+  XLSX.utils.book_append_sheet(wb,buildParamsSheet(),'Parametros');
+  XLSX.utils.book_append_sheet(wb,buildConfigSheet(),'Configuracion');
+  XLSX.writeFile(wb,`PuntoBrassil_${todayStr()}.xlsx`);showToast('Excel exportado');
+});
+
+/* =========== EXCEL IMPORT =========== */
+$('btnImportExcelTrigger').addEventListener('click',()=>$('fileImportExcel').click());
+$('fileImportExcel').addEventListener('change',(e)=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=(ev)=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'});
+      let imp=0;
+      wb.SheetNames.forEach(name=>{
+        const upper=name.toUpperCase();const ws=wb.Sheets[name];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+        if(upper.includes('BRASIL'))imp+=importCatSheet(rows,'brasil');
+        else if(upper.includes('PLATA'))imp+=importCatSheet(rows,'plata');
+        else if(upper.includes('CHINA'))imp+=importCatSheet(rows,'china');
+        else if(upper==='CLIENTES')importClientesSheet(rows);
+      });
+      recalcAllItems();renderAll();showToast(`Importados: ${imp} producto(s)`);
+    }catch(err){console.error(err);showToast('Error leyendo el Excel');}
+    e.target.value='';
+  };r.readAsArrayBuffer(f);
+});
+function importCatSheet(rows,cat){
+  // ─── Leer parámetros del encabezado de la planilla (filas 1-4, índice 0-3) ───
+  // Igual que en la planilla original: valores como fracción (0.25 → 25%)
+  const setParam=(id,val)=>{ if(val&&val>0){ $(id).value=Math.round(val*100*10)/10; } };
+  if(cat==='brasil'){
+    const r2=rows[1]||[], r3=rows[2]||[], r4=rows[3]||[];
+    if(r3[1]) $('b_tc').value = r3[1];          // B3 = tipo de cambio
+    setParam('b_viaje', r2[23]);                  // X2 = gastos viaje
+    setParam('b_red',   r2[24]);                  // Y2 = redcompra
+    setParam('b_shopify',r2[25]);                 // Z2 = comision shopify
+    setParam('b_aduana', r4[14]);                 // O4 = aduana
+    setParam('b_m1',    r4[17]);                  // R4 = margen mayorista
+    setParam('b_m2',    r4[20]);                  // U4 = margen minorista
+  } else if(cat==='plata'){
+    const r2=rows[1]||[], r4=rows[3]||[];
+    setParam('p_viaje',  r2[11]);                 // L2 = gastos viaje
+    setParam('p_red',    r2[12]);                 // M2 = redcompra
+    setParam('p_shopify',r2[13]);                 // N2 = comision shopify
+    setParam('p_m2',     r4[8]);                  // I4 = margen minorista
+  } else if(cat==='china'){
+    const r2=rows[1]||[], r4=rows[3]||[];
+    setParam('c_viaje',  r2[16]);                 // Q2 = gastos viaje
+    setParam('c_red',    r2[17]);                 // R2 = redcompra
+    setParam('c_shopify',r2[18]);                 // S2 = comision shopify
+    setParam('c_aduana', r4[7]);                  // H4 = aduana
+    setParam('c_m1',     r4[10]);                 // K4 = margen mayorista
+    setParam('c_m2',     r4[13]);                 // N4 = margen minorista
+  }
+  // ─── Importar piezas (desde fila 6, índice 5) ───
+  // Columnas fijas según planilla original:
+  // A=0 nombre, B=1 proveedor, C=2 tipo, D=3 sku, E=4 stock
+  // Brasil: F=5 gramo, G=6 mo, H=7 baño, I=8 grosor, J=9 peso, K=10 bruto, foto=AD(29)
+  // Plata:  G=6 costo, foto=R(17)
+  // China:  G=6 valorcl, foto=W(22)
+  let n=0;
+  for(let r=5;r<rows.length;r++){
+    const row=rows[r];if(!row)continue;
+    const nombre=String(row[0]||'').trim();
+    const sku=String(row[3]||'').trim();
+    const stock=num(row[4]);
+    if(!nombre&&!sku)continue;                    // fila vacía
+    if(!nombre&&stock===0)continue;               // fila de fórmula vacía
+    let item=inventory.find(i=>i.sku===sku);
+    const isNew=!item;
+    if(isNew){
+      item={sku:sku||nextId(cat,row[2]||'Otro'),categoria:cat,fechaCreacion:nowISO(),estado:'activo'};
+      inventory.push(item);
+    }
+    item.nombre  = nombre||item.nombre||'';
+    item.proveedor = String(row[1]||item.proveedor||'');
+    const tipoRaw = String(row[2]||'').trim();
+    item.tipo    = TIPO_CODE[tipoRaw]?tipoRaw:(item.tipo||'Otro');
+    item.stock   = stock;
+    item.fechaMod= nowISO();
+    if(cat==='brasil'){
+      item.grm    = num(row[5]);
+      item.mo     = num(row[6]);
+      item.bano   = num(row[7]);
+      item.grosor = num(row[8]);
+      item.peso   = num(row[9]);
+      item.bruto  = num(row[10]);
+      const fotoVal = row[29];  // columna AD
+      if(fotoVal) item.fotoUrl = String(fotoVal);
+    } else if(cat==='plata'){
+      item.costoBase = num(row[6]);  // columna G
+      const fotoVal = row[17];       // columna R
+      if(fotoVal) item.fotoUrl = String(fotoVal);
+    } else if(cat==='china'){
+      item.valorcl = num(row[6]);    // columna G
+      const fotoVal = row[22];       // columna W
+      if(fotoVal) item.fotoUrl = String(fotoVal);
+    }
+    logMovStock('importacion_excel',item,stock,isNew?0:stock,stock,`Importado Excel (${isNew?'nuevo':'actualizado'})`);
+    fbSave.item(item);
+    n++;
+  }
+  return n;
+}
+function importClientesSheet(rows){
+  for(let r=1;r<rows.length;r++){
+    const row=rows[r];if(!row||!row[1])continue;
+    const nombre=String(row[1]||'').trim();if(!nombre||findCliente(nombre))continue;
+    const c={id:row[0]||nextClienteId(),nombre,telefono:String(row[2]||''),correo:String(row[3]||''),instagram:String(row[4]||''),observaciones:String(row[5]||''),fechaCreacion:nowISO(),estado:'activo'};
+    clientes.push(c);fbSave.cliente(c);
+  }
+}
+
+/* =========== CSV =========== */
+function dlBlob(content,name,type){const b=new Blob([content],{type});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
+function toCSV(headers,rows){const e=v=>{v=(v===null||v===undefined)?'':String(v);return/[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};return[headers.map(e).join(';'),...rows.map(r=>r.map(e).join(';'))].join('\n');}
+$('btnCsvInventario').addEventListener('click',()=>{dlBlob(toCSV(['SKU','Nombre','Categoría','Tipo','Stock','Costo','Minorista','Final','Estado'],inventory.map(i=>[i.sku,i.nombre,CAT_LABEL[i.categoria],i.tipo,i.stock,Math.round(i.costo||0),Math.round(i.minorista||0),Math.round(i.final||0),i.estado])),'inventario.csv','text/csv;charset=utf-8;');});
+$('btnCsvVentas').addEventListener('click',()=>{dlBlob(toCSV(['Fecha','ID','SKU','Producto','Cliente','Cant.','Total','Pagado','Saldo','Estado','Canal'],ventas.map(v=>[v.fecha,v.id,v.sku,v.nombre,v.clienteNombre||'',v.cantidad,v.total,v.montoPagado,v.saldoPendiente,v.estadoPago,v.canal])),'ventas.csv','text/csv;charset=utf-8;');});
+$('btnCsvClientes').addEventListener('click',()=>{const rows=clientes.map(c=>{const s=getClienteSummary(c.id);return[c.id,c.nombre,c.telefono,c.correo,c.instagram,s.totalComprado,s.totalPagado,s.saldoPendiente,s.cantVentas,s.cantPend,s.ultiC||'',s.estado];});dlBlob(toCSV(['ID','Nombre','Tel','Correo','Instagram','Total Comprado','Total Pagado','Saldo','Ventas','Pendientes','Última compra','Estado'],rows),'clientes.csv','text/csv;charset=utf-8;');});
+
+/* =========== JSON BACKUP / RESTORE =========== */
+$('btnBackupJson').addEventListener('click',()=>{dlBlob(JSON.stringify({inventory,ventas,clientes,abonos,movimientos,movimientosFinancieros,negocioConfig,params:getParamsObject(),exportedAt:nowISO()},null,2),`backup_${todayStr()}.json`,'application/json');showToast('Respaldo JSON descargado');});
+$('btnRestoreJsonTrigger').addEventListener('click',()=>$('fileRestoreJson').click());
+$('fileRestoreJson').addEventListener('change',(e)=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=(ev)=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(!confirm('¿Reemplazar los datos actuales con el respaldo?'))return;
+      inventory=d.inventory||[];ventas=d.ventas||[];clientes=d.clientes||[];
+      abonos=d.abonos||[];movimientos=d.movimientos||[];movimientosFinancieros=d.movimientosFinancieros||[];
+      if(d.negocioConfig)Object.assign(negocioConfig,d.negocioConfig);
+      if(d.params)applyParamsObject(d.params);
+      recalcAllItems();renderAll();
+      inventory.forEach(fbSave.item);ventas.forEach(fbSave.venta);clientes.forEach(fbSave.cliente);abonos.forEach(fbSave.abono);fbSave.params();fbSave.negocio();
+      showToast('Respaldo restaurado');
+    }catch(err){console.error(err);showToast('Archivo JSON inválido');}
+    e.target.value='';
+  };r.readAsText(f);
+});
+
+/* =========== RENDER ALL =========== */
+function renderAll(){
+  ['brasil','plata','china'].forEach(c=>{recalcAndRenderCat(c);updateIdPrev(c,c[0]+'f_tipo',c[0]+'f_idpreview');});
+  renderInventarioUnificado();renderCatalogo();renderVentasTable();renderAbonosTable();renderClientesTable();
+  renderMovimientosTable();renderMovFinTable();renderDashboard();refreshProductDatalist();
+  refreshClienteDatalist('dl_clientes');refreshClienteDatalist('dl_clientes_ab');
+  $('clf_idpreview').textContent=nextClienteId();
+}
+
+/* =========== INICIO =========== */
+initFirebase();
+setupFotoInputs();
+renderAll();
+</script>
+</body>
+</html>
